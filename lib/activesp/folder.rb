@@ -6,24 +6,36 @@ module ActiveSP
     include Caching
     include Util
     
-    def initialize(list, id, uid, url = nil, attributes = nil)
-      @list, @id, @uid = list, id, uid
+    attr_reader :list
+    
+    def initialize(list, id, folder, uid = nil, url = nil, attributes = nil)
+      @list, @id, @folder = list, id, folder
+      @uid = uid if uid
       @site = list.site
       @url = url if url
       @attributes = attributes if attributes
+    end
+    
+    def parent
+      @folder || @list
     end
     
     def id
       @uid
     end
     
+    def uid
+      attributes["UniqueID"]
+    end
+    cache :uid
+    
     def url
-      URL.new(@list.url).join(attributes["ServerUrl"]).to_s
+      URL(@list.url).join(attributes["ServerUrl"]).to_s
     end
     cache :url
     
     def key
-      encode_key("F", [@list.key, @id, @uid])
+      encode_key("F", [parent.key, @id])
     end
     
     def attributes
@@ -32,7 +44,7 @@ module ActiveSP
     cache :attributes
     
     def items
-      @list.items(:folder => url)
+      @list.items(:folder => self)
     end
     
     def to_s

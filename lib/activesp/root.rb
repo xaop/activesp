@@ -25,6 +25,10 @@ module ActiveSP
       @site.send(:call, *a, &b)
     end
     
+    def fetch(url)
+      @site.send(:fetch, url)
+    end
+    
   end
   
 end

@@ -17,7 +17,7 @@ module ActiveSP
     end
     
     def url
-      URL.new(@site.url).join(attributes["RootFolder"]).to_s
+      URL(@site.url).join(attributes["RootFolder"]).to_s
     end
     
     def key
@@ -38,7 +38,7 @@ module ActiveSP
       folder = options.delete(:folder)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       query_options = Builder::XmlMarkup.new.QueryOptions do |xml|
-        xml.Folder(folder) if folder
+        xml.Folder(folder.url) if folder
       end
       result = call("Lists", "get_list_items") do |soap|
         soap.body = { "wsdl:listName" => @id, "wsdl:viewFields" => "<ViewFields></ViewFields>", "wsdl:queryOptions" => query_options }
@@ -48,6 +48,7 @@ module ActiveSP
         (attributes["FSObjType"] == "1" ? Folder : Item).new(
           self,
           attributes["ID"],
+          folder,
           attributes["UniqueId"],
           attributes["ServerUrl"],
           attributes
@@ -60,18 +61,18 @@ module ActiveSP
     end
     cache :fields
     
-    # def content_types
-    #   result = call("Lists", "get_list_content_types") do |soap|
-    #     soap.body = { "wsdl:listName" => @id }
-    #   end
-    #   result.xpath("//sp:ContentType", NS).map do |content_type|
-    #     ContentType.new(@site, @id, content_type["ID"], content_type["Name"])
-    #   end
-    # end
-    # cache :content_types
+    def content_types
+      result = call("Lists", "get_list_content_types") do |soap|
+        soap.body = { "wsdl:listName" => @id }
+      end
+      result.xpath("//sp:ContentType", NS).map do |content_type|
+        ContentType.new(@site, @id, content_type["ID"], content_type["Name"])
+      end
+    end
+    cache :content_types
     
     def to_s
-      "#<ActiveSP::List name=#{name}}>"
+      "#<ActiveSP::List name=#{name}>"
     end
     
     alias inspect to_s

@@ -2,11 +2,10 @@ module ActiveSP
   
   class Field
     
-    attr_reader :name, :type
+    attr_reader :name, :type, :data
     
     def initialize(name, type, data)
       @name, @type, @data = name, type, data
-      @data = nil
     end
     
     def to_s

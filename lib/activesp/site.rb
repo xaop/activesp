@@ -41,6 +41,16 @@ module ActiveSP
     end
     cache :lists
     
+    def content_types
+      result = call("Lists", "get_content_types") do |soap|
+        soap.body = { "wsdl:listName" => @id }
+      end
+      result.xpath("//sp:ContentType", NS).map do |content_type|
+        ContentType.new(@site, @id, content_type["ID"], content_type["Name"])
+      end
+    end
+    cache :content_types
+    
     def to_s
       "#<ActiveSP::Site url=#{@url.inspect}>"
     end
@@ -52,6 +62,10 @@ module ActiveSP
     def call(service, m, *args, &blk)
       result = service(service).call(m, *args, &blk)
       Nokogiri::XML.parse(result.http.body)
+    end
+    
+    def fetch(url)
+      @connection.fetch(url)
     end
   
     def service(name)

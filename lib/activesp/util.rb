@@ -31,9 +31,13 @@ module ActiveSP
           v = v == "1"
         when "File"
           v = v.sub(/\A.*?;#/, "")
+        when "Choice"
+        when "Note"
+        when "Attachments"
+        when "LookupMulti"
           # raise [k, v].inspect
         else
-          raise NotImplementedError, "don't know type #{field.type.inspect}"
+          raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
         end
         h[k] = v
         h
