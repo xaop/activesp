@@ -4,10 +4,11 @@ module ActiveSP
   
   NS = {
     "sp" => "http://schemas.microsoft.com/sharepoint/soap/",
-    "z" => "#RowsetSchema"
+    "z" => "#RowsetSchema",
+    "spdir" => "http://schemas.microsoft.com/sharepoint/soap/directory/"
   }
   
-  class Site
+  class Site < Base
     
     include Caching
     include Util
@@ -37,16 +38,14 @@ module ActiveSP
     
     def lists
       result = call("Lists", "get_list_collection")
-      result.xpath("//sp:List", NS).map { |list| List.new(self, list["ID"].to_s, list["Title"].to_s, clean_list_attributes(list.attributes)) }
+      result.xpath("//sp:List", NS).select { |list| list["Title"] != "User Information List" }.map { |list| List.new(self, list["ID"].to_s, list["Title"].to_s, clean_list_attributes(list.attributes)) }
     end
     cache :lists
     
     def content_types
-      result = call("Lists", "get_content_types") do |soap|
-        soap.body = { "wsdl:listName" => @id }
-      end
+      result = call("Webs", "get_content_types", "listName" => @id)
       result.xpath("//sp:ContentType", NS).map do |content_type|
-        ContentType.new(@site, @id, content_type["ID"], content_type["Name"])
+        ContentType.new(self, nil, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
       end
     end
     cache :content_types
@@ -85,8 +84,16 @@ module ActiveSP
         @client.request.ntlm_auth(site.connection.login, site.connection.password) if site.connection.login
       end
       
-      def call(m, *args, &blk)
-        @client.send(m, *args, &blk)
+      def call(m, *args)
+        if Hash === args[-1]
+          body = args.pop
+        end
+        @client.send(m, *args) do |soap|
+          if body
+            soap.body = body.inject({}) { |h, (k, v)| h["wsdl:#{k}"] = v ; h }
+          end
+          yield soap if block_given?
+        end
       end
       
     end

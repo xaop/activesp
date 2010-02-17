@@ -26,6 +26,12 @@ module ActiveSP
         ActiveSP::Site.new(self, trail[0], trail[1].to_i)
       when ?L
         ActiveSP::List.new(find_by_key(trail[0]), trail[1])
+      when ?U
+        ActiveSP::User.new(root, trail[0])
+      when ?G
+        ActiveSP::Group.new(root, trail[0])
+      when ?R
+        ActiveSP::Role.new(root, trail[0])
       when ?F
         parent = find_by_key(trail[0])
         if ActiveSP::Folder === parent
@@ -36,10 +42,16 @@ module ActiveSP
       when ?I
         parent = find_by_key(trail[0])
         if ActiveSP::Folder === parent
-          p([parent, parent.list, trail[1]])
           ActiveSP::Item.new(parent.list, trail[1], parent)
         else
           ActiveSP::Item.new(parent, trail[1], nil)
+        end
+      when ?T
+        parent = find_by_key(trail[0])
+        if ActiveSP::List === parent
+          ActiveSP::ContentType.new(parent.site, parent, trail[1])
+        else
+          ActiveSP::ContentType.new(parent, nil, trail[1])
         end
       else
         raise "not yet #{key.inspect}"
