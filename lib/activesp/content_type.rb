@@ -3,11 +3,13 @@ module ActiveSP
   class ContentType < Base
     
     include InSite
-    include Caching
+    extend Caching
+    extend PersistentCaching
     include Util
     
     attr_reader :id
     
+    persistent { |site, list, id, *a| [site.connection, [:content_type, id]] }
     def initialize(site, list, id, name = nil, description = nil, version = nil, group = nil)
       @site, @list, @id = site, list, id
       @name = name if name
@@ -51,7 +53,7 @@ module ActiveSP
     cache :group
     
     def fields
-      data.xpath("//sp:Field", NS).map { |field| Field.new(@list, field["StaticName"], field["Type"], field) }
+      data.xpath("//sp:Field", NS).map { |field| scope.field(field["ID"]) }.compact
     end
     cache :fields
     

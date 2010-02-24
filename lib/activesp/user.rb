@@ -2,12 +2,14 @@ module ActiveSP
   
   class User < Base
     
-    include Caching
+    extend Caching
+    extend PersistentCaching
     include Util
     include InSite
     
     attr_reader :login_name
     
+    persistent { |site, login_name, *a| [site.connection, [:user, login_name]] }
     def initialize(site, login_name)
       @site, @login_name = site, login_name
     end

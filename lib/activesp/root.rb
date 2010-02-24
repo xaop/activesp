@@ -8,7 +8,7 @@ module ActiveSP
   
   module Root
     
-    include Caching
+    extend Caching
     
     def root
       Site.new(self, @root_url)

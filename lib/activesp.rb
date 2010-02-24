@@ -3,6 +3,7 @@ end
 
 require 'activesp/util'
 require 'activesp/base'
+require 'activesp/persistent_caching'
 require 'activesp/connection'
 require 'activesp/caching'
 require 'activesp/root'

@@ -5,11 +5,13 @@ module ActiveSP
   class List < Base
     
     include InSite
-    include Caching
+    extend Caching
+    extend PersistentCaching
     include Util
     
     attr_reader :site, :id
     
+    persistent { |site, id, *a| [site.connection, [:list, id]] }
     def initialize(site, id, name = nil, attributes_before_type_cast = nil)
       @site, @id = site, id
       @name = name if name
@@ -18,6 +20,10 @@ module ActiveSP
     
     def url
       URL(@site.url).join(attributes["RootFolder"]).to_s
+    end
+    
+    def relative_url
+      @site.relative_url(url)
     end
     
     def key
@@ -110,9 +116,21 @@ module ActiveSP
     end
     
     def fields
-      data.xpath("//sp:Field", NS).inject({}) { |h, field| h[field["StaticName"]] = Field.new(@site, field["StaticName"], field["Type"], field) ; h }
+      data.xpath("//sp:Field", NS).map do |field|
+        attributes = field.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
+        @site.field(attributes["ID"]) || Field.new(self, attributes["ID"], attributes["StaticName"], attributes["Type"], attributes) if attributes["ID"] && attributes["StaticName"]
+      end.compact
     end
     cache :fields
+    
+    def fields_by_name
+      fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
+    end
+    cache :fields_by_name
+    
+    def field(id)
+      fields.find { |f| f.id == id }
+    end
     
     def content_types
       result = call("Lists", "get_list_content_types", "listName" => @id)

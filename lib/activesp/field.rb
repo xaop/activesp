@@ -1,16 +1,32 @@
 module ActiveSP
   
-  class Field
+  class Field < Base
     
-    attr_reader :name, :type, :data
+    include InSite
+    extend Caching
+    include Util
     
-    def initialize(site, name, type, data)
-      @site, @name, @type, @data = site, name, type, data
+    attr_reader :scope, :id, :name, :type, :attributes_before_type_cast
+    
+    # There is no call to get to the field info directly, so these should always
+    # be accessed through the site or list they belong to. Hence, we do not use
+    # caching here as it is useless.
+    def initialize(scope, id, name, type, attributes_before_type_cast)
+      @scope, @id, @name, @type, @attributes_before_type_cast = scope, id, name, type, attributes_before_type_cast
+      @site = Site === @scope ? @scope : @scope.site
+    end
+    
+    def key
+      encode_key("A", [@scope.key, @id])
+    end
+    
+    def attributes
+      @attributes ||= attributes_before_type_cast
     end
     
     def list_for_lookup
       if %w[Lookup LookupMulti].include?(@type)
-        list = @data["List"]
+        list = attributes["List"]
         if list[0] == ?{ && list[-1] == ?} # We have a GUID of a list
           ActiveSP::List.new(@site, list)
         end
@@ -18,7 +34,7 @@ module ActiveSP
     end
     
     def to_s
-      "#<ActiveSP::Field name=#{@name}>"
+      "#<ActiveSP::Field name=#{name}>"
     end
     
     alias inspect to_s

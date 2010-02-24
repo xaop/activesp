@@ -5,14 +5,20 @@ module ActiveSP
   
   class Site < Base
     
-    include Caching
+    extend Caching
+    extend PersistentCaching
     include Util
     
     attr_reader :url, :connection, :depth
     
+    persistent { |connection, url, *a| [connection, [:site, url]] }
     def initialize(connection, url, depth = 0)
       @connection, @url, @depth = connection, url, depth
       @services = {}
+    end
+    
+    def relative_url(url = @url)
+      url[@connection.root_url.rindex("/") + 1..-1]
     end
     
     def supersite
@@ -116,6 +122,23 @@ module ActiveSP
     end
     cache :permissions
     
+    def fields
+      call("Webs", "get_columns").xpath("//sp:Field", NS).map do |field|
+        attributes = field.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
+        supersite && supersite.field(attributes["ID"]) || Field.new(self, attributes["ID"], attributes["StaticName"], attributes["Type"], attributes) if attributes["ID"] && attributes["StaticName"]
+      end.compact
+    end
+    cache :fields
+    
+    def fields_by_name
+      fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
+    end
+    cache :fields_by_name
+    
+    def field(id)
+      fields.find { |f| f.id == id }
+    end
+    
     def to_s
       "#<ActiveSP::Site url=#{@url}>"
     end
@@ -151,6 +174,7 @@ module ActiveSP
       end
       
       def call(m, *args)
+        # puts "Calling site: #{@site.url}, service: #{@name}, method: #{m}, args: #{args.inspect}"
         if Hash === args[-1]
           body = args.pop
         end

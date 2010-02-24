@@ -8,6 +8,7 @@ module ActiveSP
   class Connection
     
     include Util
+    include PersistentCachingConfig
     
     # TODO: create profile
     attr_reader :login, :password, :root_url
@@ -32,6 +33,8 @@ module ActiveSP
         ActiveSP::Group.new(root, trail[0])
       when ?R
         ActiveSP::Role.new(root, trail[0])
+      when ?A
+        find_by_key(trail[0]).field(trail[1])
       when ?P
         ActiveSP::PermissionSet.new(find_by_key(trail[0]))
       when ?F

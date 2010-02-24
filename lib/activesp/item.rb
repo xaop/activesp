@@ -3,7 +3,7 @@ module ActiveSP
   class Item < Base
     
     include InSite
-    include Caching
+    extend Caching
     include Util
     
     attr_reader :list
@@ -39,7 +39,7 @@ module ActiveSP
     end
     
     def attributes
-      type_cast_attributes(@list, @list.fields, attributes_before_type_cast)
+      type_cast_attributes(@list, @list.fields_by_name, attributes_before_type_cast)
     end
     cache :attributes
     

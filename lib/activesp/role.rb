@@ -2,12 +2,14 @@ module ActiveSP
   
   class Role < Base
     
-    include Caching
+    extend Caching
+    extend PersistentCaching
     include Util
     include InSite
     
     attr_reader :name
     
+    persistent { |site, name, *a| [site.connection, [:role, name]] }
     def initialize(site, name)
       @site, @name = site, name
     end

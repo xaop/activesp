@@ -2,12 +2,14 @@ module ActiveSP
   
   class Group < Base
     
-    include Caching
+    extend Caching
+    extend PersistentCaching
     include Util
     include InSite
     
     attr_reader :name
     
+    persistent { |site, name, *a| [site.connection, [:group, name]] }
     def initialize(site, name)
       @site, @name = site, name
     end
