@@ -1,12 +1,7 @@
 require 'nokogiri'
+require 'time'
 
 module ActiveSP
-  
-  NS = {
-    "sp" => "http://schemas.microsoft.com/sharepoint/soap/",
-    "z" => "#RowsetSchema",
-    "spdir" => "http://schemas.microsoft.com/sharepoint/soap/directory/"
-  }
   
   class Site < Base
     
@@ -25,10 +20,44 @@ module ActiveSP
         Site.new(@connection, File.dirname(@url), depth - 1)
       end
     end
+    cache :supersite
+    
+    def rootsite
+      depth > 0 ? supersite.rootsite : self
+    end
+    cache :rootsite
     
     def key
-      encode_key("S", [@url, @depth])
+      encode_key("S", [@url[@connection.root_url.length + 1..-1], @depth])
     end
+    
+    def attributes_before_type_cast
+      element = data.xpath("//sp:sWebMetadata", NS).first
+      result = {}
+      element.children.each do |ch|
+        result[ch.name] = ch.inner_text
+      end
+      result
+    end
+    cache :attributes_before_type_cast
+    
+    def attributes
+      attrs = attributes_before_type_cast.dup
+      %w[AllowAnonymousAccess AnonymousViewListItems ExternalSecurity InheritedSecurity IsBucketWeb UsedInAutocat ValidSecurityInfo].each do |attr|
+        attrs[attr] = !!attrs[attr][/true/i]
+      end
+      %w[LastModified LastModifiedForceRecrawl].each do |attr|
+        if attrs[attr] == "0001-01-01T00:00:00"
+          attrs[attr] = nil
+        else
+          attrs[attr] = Time.xmlschema(attrs[attr])
+        end
+      end
+      attrs["Author"] = User.new(rootsite, attrs["Author"][/\\/] ? attrs["Author"] : "SHAREPOINT\\system")
+      attrs["Language"] = Integer(attrs["Language"])
+      attrs
+    end
+    cache :attributes
     
     def sites
       result = call("Webs", "get_web_collection")
@@ -36,22 +65,59 @@ module ActiveSP
     end
     cache :sites
     
+    def site(name)
+      result = call("Webs", "get_web", "webUrl" => File.join(@url, name))
+      Site.new(connection, result.xpath("//sp:Web", NS).first["Url"].to_s, @depth + 1)
+    rescue Savon::SOAPFault
+      nil
+    end
+    
     def lists
       result = call("Lists", "get_list_collection")
-      result.xpath("//sp:List", NS).select { |list| list["Title"] != "User Information List" }.map { |list| List.new(self, list["ID"].to_s, list["Title"].to_s, clean_list_attributes(list.attributes)) }
+      result.xpath("//sp:List", NS).select { |list| list["Title"] != "User Information List" }.map { |list| List.new(self, list["ID"].to_s, list["Title"].to_s) }
     end
     cache :lists
+    
+    def list(name)
+      lists.find { |list| File.basename(list.attributes["RootFolder"]) == name }
+    end
+    
+    def /(name)
+      list(name) || site(name)
+    end
     
     def content_types
       result = call("Webs", "get_content_types", "listName" => @id)
       result.xpath("//sp:ContentType", NS).map do |content_type|
-        ContentType.new(self, nil, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
+        supersite && supersite.content_type(content_type["ID"]) || ContentType.new(self, nil, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
       end
     end
     cache :content_types
     
+    def content_type(id)
+      content_types.find { |t| t.id == id }
+    end
+    
+    def permission_set
+      if attributes["InheritedSecurity"]
+        supersite.permission_set
+      else
+        PermissionSet.new(self)
+      end
+    end
+    cache :permission_set
+    
+    def permissions
+      result = call("Permissions", "get_permission_collection", "objectName" => File.basename(@url), "objectType" => "Web")
+      result.xpath("//spdir:Permission", NS).map do |row|
+        accessor = row["MemberIsUser"][/true/i] ? User.new(rootsite, row["UserLogin"]) : Group.new(rootsite, row["GroupName"])
+        { :mask => row["Mask"].to_i, :accessor => accessor }
+      end
+    end
+    cache :permissions
+    
     def to_s
-      "#<ActiveSP::Site url=#{@url.inspect}>"
+      "#<ActiveSP::Site url=#{@url}>"
     end
     
     alias inspect to_s
@@ -66,13 +132,13 @@ module ActiveSP
     def fetch(url)
       @connection.fetch(url)
     end
-  
+    
     def service(name)
       @services[name] ||= Service.new(self, name)
     end
     
     def data
-      call("SiteData", "get_site")
+      call("SiteData", "get_web")
     end
     cache :data
     

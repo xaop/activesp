@@ -66,6 +66,11 @@ module ActiveSP
     end
     cache :content_urls
     
+    def content_type
+      ContentType.new(@site, @list, attributes["ContentTypeId"])
+    end
+    cache :content_type
+    
     def to_s
       "#<ActiveSP::Item url=#{url}>"
     end

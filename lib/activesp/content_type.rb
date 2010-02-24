@@ -6,6 +6,8 @@ module ActiveSP
     include Caching
     include Util
     
+    attr_reader :id
+    
     def initialize(site, list, id, name = nil, description = nil, version = nil, group = nil)
       @site, @list, @id = site, list, id
       @name = name if name
@@ -14,8 +16,18 @@ module ActiveSP
       @group = group if group
     end
     
+    def scope
+      @list || @site
+    end
+    
+    def supertype
+      superkey = split_id[0..-2].join("")
+      (@list ? @list.content_type(superkey) : nil) || @site.content_type(superkey)
+    end
+    cache :supertype
+    
     def key
-      encode_key("T", [(@list || @site).key, @id])
+      encode_key("T", [scope.key, @id])
     end
     
     def name
@@ -70,6 +82,10 @@ module ActiveSP
       end
     end
     cache :data
+    
+    def split_id
+      ["0x"] + @id[2..-1].scan(/[0-9A-F][1-9A-F]|[1-9A-F][0-9A-F]|00[0-9A-F]{32}/)
+    end
     
   end
   

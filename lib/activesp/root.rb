@@ -1,5 +1,11 @@
 module ActiveSP
   
+  NS = {
+    "sp" => "http://schemas.microsoft.com/sharepoint/soap/",
+    "z" => "#RowsetSchema",
+    "spdir" => "http://schemas.microsoft.com/sharepoint/soap/directory/"
+  }
+  
   module Root
     
     include Caching

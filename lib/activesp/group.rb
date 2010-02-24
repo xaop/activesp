@@ -26,11 +26,23 @@ module ActiveSP
       encode_key("G", [@name])
     end
     
+    def users
+      call("UserGroup", "get_user_collection_from_group", "groupName" => @name).xpath("//spdir:User", NS).map do |row|
+        attributes = row.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
+        User.new(@site, attributes["LoginName"])
+      end
+    end
+    cache :users
+    
     def to_s
       "#<ActiveSP::Group name=#{@name}>"
     end
     
     alias inspect to_s
+    
+    def is_role?
+      false
+    end
     
   private
     
