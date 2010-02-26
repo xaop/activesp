@@ -18,6 +18,8 @@ module ActiveSP
       @login = options.delete(:login)
       @password = options.delete(:password)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
+      cache = nil
+      configure_persistent_cache { |c| cache = c }
     end
     
     def find_by_key(key)

@@ -11,7 +11,7 @@ module ActiveSP
     
     attr_reader :site, :id
     
-    persistent { |site, id, *a| [site.connection, [:list, id]] }
+    # persistent { |site, id, *a| [site.connection, [:list, id]] }
     def initialize(site, id, name = nil, attributes_before_type_cast = nil)
       @site, @id = site, id
       @name = name if name
@@ -60,12 +60,12 @@ module ActiveSP
       attrs["Author"] = User.new(@site.rootsite, attrs["Author"][/\\/] ? attrs["Author"] : "SHAREPOINT\\system")
       attrs
     end
-    cache :attributes
+    cache :attributes, :dup => true
     
     def attributes_before_type_cast
       clean_list_attributes(data.attributes)
     end
-    cache :attributes_before_type_cast
+    cache :attributes_before_type_cast, :dup => true
     
     def attributes_before_type_cast2
       element = data2.xpath("//sp:sListMetadata", NS).first
@@ -75,7 +75,7 @@ module ActiveSP
       end
       result
     end
-    cache :attributes_before_type_cast2
+    cache :attributes_before_type_cast2, :dup => true
     
     def items(options = {})
       folder = options.delete(:folder)
@@ -118,15 +118,17 @@ module ActiveSP
     def fields
       data.xpath("//sp:Field", NS).map do |field|
         attributes = field.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
-        @site.field(attributes["ID"]) || Field.new(self, attributes["ID"], attributes["StaticName"], attributes["Type"], attributes) if attributes["ID"] && attributes["StaticName"]
+        if attributes["ID"] && attributes["StaticName"]
+          @site.field(attributes["ID"].to_s.downcase) || Field.new(self, attributes["ID"].to_s.downcase, attributes["StaticName"], attributes["Type"], attributes)
+        end
       end.compact
     end
-    cache :fields
+    cache :fields, :dup => true
     
     def fields_by_name
       fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
     end
-    cache :fields_by_name
+    cache :fields_by_name, :dup => true
     
     def field(id)
       fields.find { |f| f.id == id }
@@ -138,7 +140,7 @@ module ActiveSP
         ContentType.new(@site, self, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
       end
     end
-    cache :content_types
+    cache :content_types, :dup => true
     
     def content_type(id)
       content_types.find { |t| t.id == id }
@@ -161,7 +163,7 @@ module ActiveSP
         { :mask => row["Mask"].to_i, :accessor => accessor }
       end
     end
-    cache :permissions
+    cache :permissions, :dup => true
     
     def to_s
       "#<ActiveSP::List name=#{name}>"

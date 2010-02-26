@@ -21,7 +21,7 @@ module ActiveSP
         User.new(root, attributes["LoginName"])
       end
     end
-    cache :users
+    cache :users, :dup => true
     
     def groups
       root.send(:call, "UserGroup", "get_group_collection_from_site").xpath("//spdir:Group", NS).map do |row|
@@ -29,7 +29,7 @@ module ActiveSP
         Group.new(root, attributes["Name"])
       end
     end
-    cache :groups
+    cache :groups, :dup => true
     
     def roles
       root.send(:call, "UserGroup", "get_role_collection_from_web").xpath("//spdir:Role", NS).map do |row|
@@ -37,7 +37,7 @@ module ActiveSP
         Role.new(root, attributes["Name"])
       end
     end
-    cache :roles
+    cache :roles, :dup => true
     
   end
   

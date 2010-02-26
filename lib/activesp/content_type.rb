@@ -55,7 +55,7 @@ module ActiveSP
     def fields
       data.xpath("//sp:Field", NS).map { |field| scope.field(field["ID"]) }.compact
     end
-    cache :fields
+    cache :fields, :dup => true
     
     def attributes
       {
@@ -66,7 +66,7 @@ module ActiveSP
         "Group" => group
       }
     end
-    cache :attributes
+    cache :attributes, :dup => true
     
     def to_s
       "#<ActiveSP::ContentType name=#{name}>"

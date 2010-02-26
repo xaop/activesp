@@ -45,7 +45,7 @@ module ActiveSP
       end
       result
     end
-    cache :attributes_before_type_cast
+    cache :attributes_before_type_cast, :dup => true
     
     def attributes
       attrs = attributes_before_type_cast.dup
@@ -63,13 +63,13 @@ module ActiveSP
       attrs["Language"] = Integer(attrs["Language"])
       attrs
     end
-    cache :attributes
+    cache :attributes, :dup => true
     
     def sites
       result = call("Webs", "get_web_collection")
       result.xpath("//sp:Web", NS).map { |web| Site.new(connection, web["Url"].to_s, @depth + 1) }
     end
-    cache :sites
+    cache :sites, :dup => true
     
     def site(name)
       result = call("Webs", "get_web", "webUrl" => File.join(@url, name))
@@ -82,7 +82,7 @@ module ActiveSP
       result = call("Lists", "get_list_collection")
       result.xpath("//sp:List", NS).select { |list| list["Title"] != "User Information List" }.map { |list| List.new(self, list["ID"].to_s, list["Title"].to_s) }
     end
-    cache :lists
+    cache :lists, :dup => true
     
     def list(name)
       lists.find { |list| File.basename(list.attributes["RootFolder"]) == name }
@@ -98,7 +98,7 @@ module ActiveSP
         supersite && supersite.content_type(content_type["ID"]) || ContentType.new(self, nil, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
       end
     end
-    cache :content_types
+    cache :content_types, :dup => true
     
     def content_type(id)
       content_types.find { |t| t.id == id }
@@ -120,20 +120,20 @@ module ActiveSP
         { :mask => row["Mask"].to_i, :accessor => accessor }
       end
     end
-    cache :permissions
+    cache :permissions, :dup => true
     
     def fields
       call("Webs", "get_columns").xpath("//sp:Field", NS).map do |field|
         attributes = field.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
-        supersite && supersite.field(attributes["ID"]) || Field.new(self, attributes["ID"], attributes["StaticName"], attributes["Type"], attributes) if attributes["ID"] && attributes["StaticName"]
+        supersite && supersite.field(attributes["ID"].to_s.downcase) || Field.new(self, attributes["ID"].to_s.downcase, attributes["StaticName"], attributes["Type"], attributes) if attributes["ID"] && attributes["StaticName"]
       end.compact
     end
-    cache :fields
+    cache :fields, :dup => true
     
     def fields_by_name
       fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
     end
-    cache :fields_by_name
+    cache :fields_by_name, :dup => true
     
     def field(id)
       fields.find { |f| f.id == id }

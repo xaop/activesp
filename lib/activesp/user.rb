@@ -17,12 +17,12 @@ module ActiveSP
     def attributes
       attributes_before_type_cast
     end
-    cache :attributes
+    cache :attributes, :dup => true
     
     def attributes_before_type_cast
       data.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
     end
-    cache :attributes_before_type_cast
+    cache :attributes_before_type_cast, :dup => true
     
     def key
       encode_key("U", [@login_name])

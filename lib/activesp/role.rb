@@ -17,12 +17,12 @@ module ActiveSP
     def attributes
       attributes_before_type_cast
     end
-    cache :attributes
+    cache :attributes, :dup => true
     
     def attributes_before_type_cast
       data.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
     end
-    cache :attributes_before_type_cast
+    cache :attributes_before_type_cast, :dup => true
     
     def key
       encode_key("R", [@name])
@@ -34,7 +34,7 @@ module ActiveSP
         User.new(@site, attributes["LoginName"])
       end
     end
-    cache :users
+    cache :users, :dup => true
     
     def groups
       call("UserGroup", "get_group_collection_from_role", "roleName" => @name).xpath("//spdir:Group", NS).map do |row|
@@ -42,7 +42,7 @@ module ActiveSP
         Group.new(@site, attributes["Name"])
       end
     end
-    cache :groups
+    cache :groups, :dup => true
     
     def to_s
       "#<ActiveSP::Role name=#{@name}>"

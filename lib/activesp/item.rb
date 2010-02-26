@@ -41,22 +41,22 @@ module ActiveSP
     def attributes
       type_cast_attributes(@list, @list.fields_by_name, attributes_before_type_cast)
     end
-    cache :attributes
+    cache :attributes, :dup => true
     
     def attributes_before_type_cast
       clean_item_attributes(data.attributes)
     end
-    cache :attributes_before_type_cast
+    cache :attributes_before_type_cast, :dup => true
     
     def attachments
       result = call("Lists", "get_attachment_collection", "listName" => @list.id, "listItemID" => @id)
       result.xpath("//sp:Attachment", NS).map { |att| att.text }
     end
-    cache :attachments
+    cache :attachments, :dup => true
     
     def content_urls
       case @list.attributes["BaseType"]
-      when "0"
+      when "0", "5"
         attachments
       when "1"
         [url]
@@ -64,12 +64,16 @@ module ActiveSP
         raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
       end
     end
-    cache :content_urls
+    cache :content_urls, :dup => true
     
     def content_type
       ContentType.new(@site, @list, attributes["ContentTypeId"])
     end
     cache :content_type
+    
+    def versions
+      call("Versions", "get_versions", "fileName" => attributes["ServerUrl"])
+    end
     
     def to_s
       "#<ActiveSP::Item url=#{url}>"
@@ -98,52 +102,55 @@ module ActiveSP
     
     def type_cast_attributes(list, fields, attributes)
       attributes.inject({}) do |h, (k, v)|
-        field = fields[k] or raise ArgumentError, "can't find field #{k.inspect}"
-        case field.type
-        when "DateTime"
-          Time.parse(v)
-        when "Computed", "Text", "Guid", "ContentTypeId"
-        when "Integer", "Counter", "Attachments"
-          v = v.to_i
-        when "ModStat" # 0
-        when "Number"
-          v = v.to_f
-        when "Boolean"
-          v = v == "1"
-        when "File"
-          # v = v.sub(/\A.*?;#/, "")
-        when "Note"
+        if field = fields[k]
+          case field.type
+          when "DateTime"
+            Time.parse(v)
+          when "Computed", "Text", "Guid", "ContentTypeId"
+          when "Integer", "Counter", "Attachments"
+            v = v.to_i
+          when "ModStat" # 0
+          when "Number"
+            v = v.to_f
+          when "Boolean"
+            v = v == "1"
+          when "File"
+            # v = v.sub(/\A.*?;#/, "")
+          when "Note"
           
-        when "User"
-          d = split_multi(v)
-          v = User.new(@site.connection.root, d[2][/\\/] ? d[2] : "SHAREPOINT\\system")
-        when "UserMulti"
-          d = split_multi(v)
-          v = (0...(d.length / 4)).map { |i| User.new(@site.connection.root, d[4 * i + 2][/\\/] ? d[4 * i + 2] : "SHAREPOINT\\system") }
+          when "User"
+            d = split_multi(v)
+            v = User.new(@site.connection.root, d[2][/\\/] ? d[2] : "SHAREPOINT\\system")
+          when "UserMulti"
+            d = split_multi(v)
+            v = (0...(d.length / 4)).map { |i| User.new(@site.connection.root, d[4 * i + 2][/\\/] ? d[4 * i + 2] : "SHAREPOINT\\system") }
           
-        when "Choice"
-          # For some reason there is no encoding here
-        when "MultiChoice"
-          # SharePoint disallows ;# inside choices and starts with a ;#
-          v = v.split(/;#/)[1..-1]
+          when "Choice"
+            # For some reason there is no encoding here
+          when "MultiChoice"
+            # SharePoint disallows ;# inside choices and starts with a ;#
+            v = v.split(/;#/)[1..-1]
           
-        when "Lookup"
-          d = split_multi(v)
-          if field.list_for_lookup
-            v = create_item_from_id(field.list_for_lookup, d[0])
+          when "Lookup"
+            d = split_multi(v)
+            if field.list_for_lookup
+              v = create_item_from_id(field.list_for_lookup, d[0])
+            else
+              v = d[2]
+            end
+          when "LookupMulti"
+            d = split_multi(v)
+            if field.list_for_lookup
+              v = (0...(d.length / 4)).map { |i| create_item_from_id(field.list_for_lookup, d[4 * i]) }
+            else
+              v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
+            end
+          
           else
-            v = d[2]
+            raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
           end
-        when "LookupMulti"
-          d = split_multi(v)
-          if field.list_for_lookup
-            v = (0...(d.length / 4)).map { |i| create_item_from_id(field.list_for_lookup, d[4 * i]) }
-          else
-            v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
-          end
-          
         else
-          raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
+          # raise ArgumentError, "can't find field #{k.inspect}"
         end
         h[k] = v
         h

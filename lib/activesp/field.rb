@@ -29,6 +29,8 @@ module ActiveSP
         list = attributes["List"]
         if list[0] == ?{ && list[-1] == ?} # We have a GUID of a list
           ActiveSP::List.new(@site, list)
+        elsif list == "Self"
+          List === @scope ? @scope : nil
         end
       end
     end
