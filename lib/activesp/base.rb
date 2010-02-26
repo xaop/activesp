@@ -4,7 +4,7 @@ module ActiveSP
   class Base
     
     def has_attribute?(name)
-      attributes.has_key?(ms)
+      attributes.has_key?(name)
     end
     
     def attribute(name)
@@ -17,10 +17,10 @@ module ActiveSP
     
     def method_missing(m, *a, &b)
       ms = m.to_s
-      if a.length == 0 && attributes.has_key?(ms)
+      if a.length == 0 && has_attribute?(ms)
         attribute(ms)
-      elsif a.length == 1 && attributes.has_key?(ms[1..-1])
-        set_attribute(ms, *a)
+      elsif a.length == 1 && has_attribute?(ms[0..-2])
+        set_attribute(ms[0..-2], *a)
       else
         super
       end
