@@ -17,7 +17,7 @@ spec = Gem::Specification.new do |s|
   s.files += Dir['lib/**/*.rb']
   # s.bindir = "bin"
   # s.executables.push(*(Dir['bin/*.rb'] - ["bin/encrypt-dmcl.rb"]).map { |f| File.basename(f) })
-  s.add_dependency('savon')
+  s.add_dependency('savon-xaop')
   s.add_dependency('nokogiri')
   # s.rdoc_options << '--exclude' << 'ext' << '--main' << 'README'
   # s.extra_rdoc_files = ["README", "docs/README.html"]

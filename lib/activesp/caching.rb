@@ -15,6 +15,7 @@ module ActiveSP
             @#{name} = #{name}__uncached(*a, &b)
           end#{".dup" if duplicate}
         end
+        undef reload if instance_methods.include?("reload")
         def reload
           #{@cached_methods.map { |m| "remove_instance_variable(:@#{m}) if defined?(@#{m})" }.join(';')}
           super if defined? super

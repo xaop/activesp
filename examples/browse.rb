@@ -17,4 +17,9 @@ end
 
 c = ActiveSP::Connection.new(YAML.load(File.read("config.yml")))
 
-browse(c.root)
+begin
+  browse(c.root)
+rescue Exception => e
+  puts e.message
+  puts e.backtrace
+end

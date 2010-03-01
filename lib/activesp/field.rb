@@ -6,13 +6,13 @@ module ActiveSP
     extend Caching
     include Util
     
-    attr_reader :scope, :id, :name, :type, :attributes_before_type_cast
+    attr_reader :scope, :id, :name, :type, :parent, :attributes_before_type_cast
     
     # There is no call to get to the field info directly, so these should always
     # be accessed through the site or list they belong to. Hence, we do not use
     # caching here as it is useless.
-    def initialize(scope, id, name, type, attributes_before_type_cast)
-      @scope, @id, @name, @type, @attributes_before_type_cast = scope, id, name, type, attributes_before_type_cast
+    def initialize(scope, id, name, type, parent, attributes_before_type_cast)
+      @scope, @id, @name, @type, @parent, @attributes_before_type_cast = scope, id, name, type, parent, attributes_before_type_cast
       @site = Site === @scope ? @scope : @scope.site
     end
     

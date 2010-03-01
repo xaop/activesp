@@ -3,6 +3,10 @@ require 'net/ntlm_http'
 
 Savon::Request.logger.level = Logger::ERROR
 
+Savon::Response.error_handler do |soap_fault|
+  soap_fault[:detail][:errorstring]
+end
+
 module ActiveSP
   
   class Connection
@@ -11,12 +15,13 @@ module ActiveSP
     include PersistentCachingConfig
     
     # TODO: create profile
-    attr_reader :login, :password, :root_url
+    attr_reader :login, :password, :root_url, :trace
     
     def initialize(options = {})
       @root_url = options.delete(:root) or raise ArgumentError, "missing :root option"
       @login = options.delete(:login)
       @password = options.delete(:password)
+      @trace = options.delete(:trace)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       cache = nil
       configure_persistent_cache { |c| cache = c }

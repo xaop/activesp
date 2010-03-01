@@ -119,7 +119,7 @@ module ActiveSP
       data.xpath("//sp:Field", NS).map do |field|
         attributes = field.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
         if attributes["ID"] && attributes["StaticName"]
-          @site.field(attributes["ID"].to_s.downcase) || Field.new(self, attributes["ID"].to_s.downcase, attributes["StaticName"], attributes["Type"], attributes)
+          Field.new(self, attributes["ID"].to_s.downcase, attributes["StaticName"], attributes["Type"], @site.field(attributes["ID"].to_s.downcase), attributes)
         end
       end.compact
     end

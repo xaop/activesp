@@ -125,7 +125,7 @@ module ActiveSP
     def fields
       call("Webs", "get_columns").xpath("//sp:Field", NS).map do |field|
         attributes = field.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
-        supersite && supersite.field(attributes["ID"].to_s.downcase) || Field.new(self, attributes["ID"].to_s.downcase, attributes["StaticName"], attributes["Type"], attributes) if attributes["ID"] && attributes["StaticName"]
+        supersite && supersite.field(attributes["ID"].to_s.downcase) || Field.new(self, attributes["ID"].to_s.downcase, attributes["StaticName"], attributes["Type"], nil, attributes) if attributes["ID"] && attributes["StaticName"]
       end.compact
     end
     cache :fields, :dup => true
@@ -174,7 +174,7 @@ module ActiveSP
       end
       
       def call(m, *args)
-        # puts "Calling site: #{@site.url}, service: #{@name}, method: #{m}, args: #{args.inspect}"
+        t1 = Time.now
         if Hash === args[-1]
           body = args.pop
         end
@@ -184,6 +184,9 @@ module ActiveSP
           end
           yield soap if block_given?
         end
+      ensure
+        t2 = Time.now
+        puts "SP - time: %.3fs, site: %s, service: %s, method: %s, body: %s" % [t2 - t1, @site.url, @name, m, body.inspect] if @site.connection.trace
       end
       
     end
