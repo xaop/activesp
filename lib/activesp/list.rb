@@ -81,21 +81,86 @@ module ActiveSP
       folder = options.delete(:folder)
       query = options.delete(:query)
       query = query ? { "query" => query } : {}
+      no_preload = options.delete(:no_preload)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       query_options = Builder::XmlMarkup.new.QueryOptions do |xml|
         xml.Folder(folder.url) if folder
       end
-      result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => "<ViewFields></ViewFields>", "queryOptions" => query_options }.merge(query))
-      result.xpath("//z:row", NS).map do |row|
-        attributes = clean_item_attributes(row.attributes)
-        (attributes["FSObjType"][/1$/] ? Folder : Item).new(
-          self,
-          attributes["ID"],
-          folder,
-          attributes["UniqueId"],
-          attributes["ServerUrl"],
-          attributes
-        )
+      if no_preload
+        view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
+          %w[FSObjType ID UniqueId ServerUrl].each { |f| xml.FieldRef("Name" => f) }
+        end
+        result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => viewFields, "queryOptions" => query_options }.merge(query))
+        result.xpath("//z:row", NS).map do |row|
+          attributes = clean_item_attributes(row.attributes)
+          (attributes["FSObjType"][/1$/] ? Folder : Item).new(
+            self,
+            attributes["ID"],
+            folder,
+            attributes["UniqueId"],
+            attributes["ServerUrl"]
+          )
+        end
+      else
+        begin
+          result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => "<ViewFields></ViewFields>", "queryOptions" => query_options }.merge(query))
+          result.xpath("//z:row", NS).map do |row|
+            attributes = clean_item_attributes(row.attributes)
+            (attributes["FSObjType"][/1$/] ? Folder : Item).new(
+              self,
+              attributes["ID"],
+              folder,
+              attributes["UniqueId"],
+              attributes["ServerUrl"],
+              attributes
+            )
+          end
+        rescue Savon::SOAPFault => e
+          if e.message[/lookup column threshold/]
+            fields = self.fields.map { |f| f.name }
+            split_factor = 2
+            begin
+              split_size = (fields.length + split_factor - 1) / split_factor
+              parts = []
+              split_factor.times do |i|
+                lo = i * split_size
+                hi = [(i + 1) * split_size, fields.length].min - 1
+                view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
+                  fields[lo..hi].each { |f| xml.FieldRef("Name" => f) }
+                end
+                by_id = {}
+                result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options }.merge(query))
+                result.xpath("//z:row", NS).map do |row|
+                  attributes = clean_item_attributes(row.attributes)
+                  by_id[attributes["ID"]] = attributes
+                end
+                parts << by_id
+              end
+              parts[0].map do |id, attrs|
+                parts[1..-1].each do |part|
+                  attrs.merge!(part[id])
+                end
+                (attrs["FSObjType"][/1$/] ? Folder : Item).new(
+                  self,
+                  attrs["ID"],
+                  folder,
+                  attrs["UniqueId"],
+                  attrs["ServerUrl"],
+                  attrs
+                )
+              end
+            rescue Savon::SOAPFault => e
+              if e.message[/lookup column threshold/]
+                split_factor += 1
+                retry
+              else
+                raise
+              end
+            end
+          else
+            raise
+          end
+        end
       end
     end
     
@@ -126,7 +191,7 @@ module ActiveSP
     cache :fields, :dup => true
     
     def fields_by_name
-      fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
+      fields.inject({}) { |h, f| h[f.name] = f ; h }
     end
     cache :fields_by_name, :dup => true
     

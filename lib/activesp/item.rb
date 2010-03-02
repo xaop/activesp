@@ -106,7 +106,7 @@ module ActiveSP
           case field.type
           when "DateTime"
             Time.parse(v)
-          when "Computed", "Text", "Guid", "ContentTypeId"
+          when "Computed", "Text", "Guid", "ContentTypeId", "URL"
           when "Integer", "Counter", "Attachments"
             v = v.to_i
           when "ModStat" # 0
@@ -147,10 +147,12 @@ module ActiveSP
             end
           
           else
-            raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
+            # raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
+            warn "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
           end
         else
           # raise ArgumentError, "can't find field #{k.inspect}"
+          warn "can't find field #{k.inspect}"
         end
         h[k] = v
         h
