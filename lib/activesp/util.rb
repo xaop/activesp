@@ -4,12 +4,80 @@ module ActiveSP
     
   private
     
-    def clean_list_attributes(attributes)
+    def clean_attributes(attributes)
       attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
     end
     
     def clean_item_attributes(attributes)
       attributes.inject({}) { |h, (k, v)| h[k.sub(/\Aows_/, "")] = v.to_s ; h }
+    end
+    
+    def type_cast_attributes(site, list, fields, attributes)
+      attributes.inject({}) do |h, (k, v)|
+        if field = fields[k]
+          case field.internal_type
+          when "ListReference"
+          when "StandardDateTime"
+            v = Time.parse(v)
+          when "DateTime"
+            v = Time.parse(v)
+          when "XMLDateTime"
+            v = Time.xmlschema(v.sub(/ /, "T"))
+          when "Computed", "Text", "Guid", "ContentTypeId", "URL"
+          when "Integer", "Counter", "Attachments"
+            v = v && v != "" ? Integer(v) : nil
+          when "ModStat" # 0
+          when "Number"
+            v = v.to_f
+          when "Boolean"
+            v = v == "1"
+          when "Bool"
+            v = !!v[/true/i]
+          when "File"
+            # v = v.sub(/\A.*?;#/, "")
+          when "Note"
+          
+          when "User"
+            d = split_multi(v)
+            v = User.new(site.connection.root, d[2][/\\/] ? d[2] : "SHAREPOINT\\system")
+          when "InternalUser"
+            v = User.new(site.connection.root, v[/\\/] ? v : "SHAREPOINT\\system")
+          when "UserMulti"
+            d = split_multi(v)
+            v = (0...(d.length / 4)).map { |i| User.new(site.connection.root, d[4 * i + 2][/\\/] ? d[4 * i + 2] : "SHAREPOINT\\system") }
+          
+          when "Choice"
+            # For some reason there is no encoding here
+          when "MultiChoice"
+            # SharePoint disallows ;# inside choices and starts with a ;#
+            v = v.split(/;#/)[1..-1]
+          
+          when "Lookup"
+            d = split_multi(v)
+            if field.List
+              v = create_item_from_id(field.List, d[0])
+            else
+              v = d[2]
+            end
+          when "LookupMulti"
+            d = split_multi(v)
+            if field.List
+              v = (0...(d.length / 4)).map { |i| create_item_from_id(field.List, d[4 * i]) }
+            else
+              v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
+            end
+          
+          else
+            # raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
+            warn "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
+          end
+        else
+          # raise ArgumentError, "can't find field #{k.inspect}"
+          warn "can't find field #{k.inspect} on #{self}"
+        end
+        h[k] = v
+        h
+      end
     end
     
     def encode_key(type, trail)
@@ -36,6 +104,33 @@ module ActiveSP
         end
       end
       list.items(:query => query).first
+    end
+    
+    def translate_internal_type(field)
+      case field.internal_type
+      when "Computed", "Text", "Guid", "ContentTypeId", "URL", "Choice", "MultiChoice", "File", "Note"
+        "Text"
+      when "Integer", "Counter", "Attachments", "ModStat"
+        "Integer"
+      when "Number"
+        "Float"
+      when "StandardDateTime", "DateTime", "XMLDateTime"
+        "DateTime"
+      when "Boolean", "Bool"
+        "Boolean"
+      when "User", "InternalUser", "UserMulti"
+        "UserReference"
+      when "Lookup", "LookupMulti"
+        if field.List
+          "ItemReference"
+        else
+          "Text"
+        end
+      when "ListReference"
+        "ListReference"
+      else
+        "Text"
+      end
     end
     
   end

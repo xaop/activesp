@@ -1,4 +1,5 @@
 require 'rubygems'
+$:.unshift("../lib") # Give priority to the local install
 require 'activesp'
 
 def browse(item, indentation = 0)
@@ -21,5 +22,6 @@ begin
   browse(c.root)
 rescue Exception => e
   puts e.message
+  p e.class
   puts e.backtrace
 end

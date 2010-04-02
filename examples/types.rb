@@ -1,4 +1,5 @@
 require 'rubygems'
+$:.unshift("../lib") # Give priority to the local install
 require 'activesp'
 require 'pp'
 

@@ -1,6 +1,3 @@
-require 'nokogiri'
-require 'time'
-
 module ActiveSP
   
   class Site < Base
@@ -9,7 +6,7 @@ module ActiveSP
     extend PersistentCaching
     include Util
     
-    attr_reader :url, :connection, :depth
+    attr_reader :url, :connection
     
     persistent { |connection, url, *a| [connection, [:site, url]] }
     def initialize(connection, url, depth = 0)
@@ -22,48 +19,24 @@ module ActiveSP
     end
     
     def supersite
-      if depth > 0
-        Site.new(@connection, File.dirname(@url), depth - 1)
+      if @depth > 0
+        Site.new(@connection, File.dirname(@url), @depth - 1)
       end
     end
     cache :supersite
     
     def rootsite
-      depth > 0 ? supersite.rootsite : self
+      @depth > 0 ? supersite.rootsite : self
     end
     cache :rootsite
+    
+    def is_root_site?
+      @depth == 0
+    end
     
     def key
       encode_key("S", [@url[@connection.root_url.length + 1..-1], @depth])
     end
-    
-    def attributes_before_type_cast
-      element = data.xpath("//sp:sWebMetadata", NS).first
-      result = {}
-      element.children.each do |ch|
-        result[ch.name] = ch.inner_text
-      end
-      result
-    end
-    cache :attributes_before_type_cast, :dup => true
-    
-    def attributes
-      attrs = attributes_before_type_cast.dup
-      %w[AllowAnonymousAccess AnonymousViewListItems ExternalSecurity InheritedSecurity IsBucketWeb UsedInAutocat ValidSecurityInfo].each do |attr|
-        attrs[attr] = !!attrs[attr][/true/i]
-      end
-      %w[LastModified LastModifiedForceRecrawl].each do |attr|
-        if attrs[attr] == "0001-01-01T00:00:00"
-          attrs[attr] = nil
-        else
-          attrs[attr] = Time.xmlschema(attrs[attr])
-        end
-      end
-      attrs["Author"] = User.new(rootsite, attrs["Author"][/\\/] ? attrs["Author"] : "SHAREPOINT\\system")
-      attrs["Language"] = Integer(attrs["Language"])
-      attrs
-    end
-    cache :attributes, :dup => true
     
     def sites
       result = call("Webs", "get_web_collection")
@@ -79,8 +52,19 @@ module ActiveSP
     end
     
     def lists
-      result = call("Lists", "get_list_collection")
-      result.xpath("//sp:List", NS).select { |list| list["Title"] != "User Information List" }.map { |list| List.new(self, list["ID"].to_s, list["Title"].to_s) }
+      result1 = call("Lists", "get_list_collection")
+      result2 = call("SiteData", "get_list_collection")
+      result2_by_id = {}
+      result2.xpath("//sp:_sList", NS).each do |element|
+        data = {}
+        element.children.each do |ch|
+          data[ch.name] = ch.inner_text
+        end
+        result2_by_id[data["InternalName"]] = data
+      end
+      result1.xpath("//sp:List", NS).select { |list| list["Title"] != "User Information List" }.map do |list|
+        List.new(self, list["ID"].to_s, list["Title"].to_s, clean_attributes(list.attributes), result2_by_id[list["ID"].to_s])
+      end
     end
     cache :lists, :dup => true
     
@@ -113,19 +97,10 @@ module ActiveSP
     end
     cache :permission_set
     
-    def permissions
-      result = call("Permissions", "get_permission_collection", "objectName" => File.basename(@url), "objectType" => "Web")
-      result.xpath("//spdir:Permission", NS).map do |row|
-        accessor = row["MemberIsUser"][/true/i] ? User.new(rootsite, row["UserLogin"]) : Group.new(rootsite, row["GroupName"])
-        { :mask => row["Mask"].to_i, :accessor => accessor }
-      end
-    end
-    cache :permissions, :dup => true
-    
     def fields
       call("Webs", "get_columns").xpath("//sp:Field", NS).map do |field|
-        attributes = field.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
-        supersite && supersite.field(attributes["ID"].to_s.downcase) || Field.new(self, attributes["ID"].to_s.downcase, attributes["StaticName"], attributes["Type"], nil, attributes) if attributes["ID"] && attributes["StaticName"]
+        attributes = clean_attributes(field.attributes)
+        supersite && supersite.field(attributes["ID"].downcase) || Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], nil, attributes) if attributes["ID"] && attributes["StaticName"]
       end.compact
     end
     cache :fields, :dup => true
@@ -136,7 +111,7 @@ module ActiveSP
     cache :fields_by_name, :dup => true
     
     def field(id)
-      fields.find { |f| f.id == id }
+      fields.find { |f| f.ID == id }
     end
     
     def to_s
@@ -164,6 +139,50 @@ module ActiveSP
       call("SiteData", "get_web")
     end
     cache :data
+    
+    def attributes_before_type_cast
+      element = data.xpath("//sp:sWebMetadata", NS).first
+      result = {}
+      element.children.each do |ch|
+        result[ch.name] = ch.inner_text
+      end
+      result
+    end
+    cache :attributes_before_type_cast
+    
+    def original_attributes
+      type_cast_attributes(self, nil, internal_attribute_types, attributes_before_type_cast)
+    end
+    cache :original_attributes
+    
+    def internal_attribute_types
+      @@internal_attribute_types ||= {
+        "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true),
+        "AnonymousViewListItems" => GhostField.new("AnonymousViewListItems", "Bool", false, true),
+        "Author" => GhostField.new("Author", "InternalUser", false, true),
+        "Description" => GhostField.new("Description", "Text", false, true),
+        "ExternalSecurity" => GhostField.new("ExternalSecurity", "Bool", false, true),
+        "InheritedSecurity" => GhostField.new("InheritedSecurity", "Bool", false, true),
+        "IsBucketWeb" => GhostField.new("IsBucketWeb", "Bool", false, true),
+        "Language" => GhostField.new("Language", "Integer", false, true),
+        "LastModified" => GhostField.new("LastModified", "XMLDateTime", false, true),
+        "LastModifiedForceRecrawl" => GhostField.new("LastModifiedForceRecrawl", "XMLDateTime", false, true),
+        "Permissions" => GhostField.new("Permissions", "Text", false, true),
+        "Title" => GhostField.new("Title", "Text", false, true),
+        "UsedInAutocat" => GhostField.new("UsedInAutocat", "Bool", false, true),
+        "ValidSecurityInfo" => GhostField.new("ValidSecurityInfo", "Bool", false, true),
+        "WebID" => GhostField.new("WebID", "Text", false, true)
+      }
+    end
+    
+    def permissions
+      result = call("Permissions", "get_permission_collection", "objectName" => File.basename(@url), "objectType" => "Web")
+      result.xpath("//spdir:Permission", NS).map do |row|
+        accessor = row["MemberIsUser"][/true/i] ? User.new(rootsite, row["UserLogin"]) : Group.new(rootsite, row["GroupName"])
+        { :mask => Integer(row["Mask"]), :accessor => accessor }
+      end
+    end
+    cache :permissions, :dup => true
     
     class Service
       

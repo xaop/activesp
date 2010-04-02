@@ -17,7 +17,7 @@ module ActiveSP
     
     def users
       root.send(:call, "UserGroup", "get_user_collection_from_site").xpath("//spdir:User", NS).map do |row|
-        attributes = row.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
+        attributes = clean_attributes(row.attributes)
         User.new(root, attributes["LoginName"])
       end
     end
@@ -25,7 +25,7 @@ module ActiveSP
     
     def groups
       root.send(:call, "UserGroup", "get_group_collection_from_site").xpath("//spdir:Group", NS).map do |row|
-        attributes = row.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
+        attributes = clean_attributes(row.attributes)
         Group.new(root, attributes["Name"])
       end
     end
@@ -33,7 +33,7 @@ module ActiveSP
     
     def roles
       root.send(:call, "UserGroup", "get_role_collection_from_web").xpath("//spdir:Role", NS).map do |row|
-        attributes = row.attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
+        attributes = clean_attributes(row.attributes)
         Role.new(root, attributes["Name"])
       end
     end

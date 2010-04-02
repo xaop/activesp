@@ -11,7 +11,7 @@ module ActiveSP
     end
     
     def permissions
-      @scope.permissions
+      @scope.send(:permissions)
     end
     
     def key

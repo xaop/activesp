@@ -12,10 +12,10 @@ module ActiveSP
     persistent { |site, list, id, *a| [site.connection, [:content_type, id]] }
     def initialize(site, list, id, name = nil, description = nil, version = nil, group = nil)
       @site, @list, @id = site, list, id
-      @name = name if name
-      @description = description if description
-      @version = version if version
-      @group = group if group
+      @Name = name if name
+      @Description = description if description
+      @Version = version if version
+      @Group = group if group
     end
     
     def scope
@@ -32,44 +32,33 @@ module ActiveSP
       encode_key("T", [scope.key, @id])
     end
     
-    def name
+    def Name
       data["Name"].to_s
     end
-    cache :name
+    cache :Name
     
-    def description
+    def Description
       data["Description"].to_s
     end
-    cache :description
+    cache :Description
     
-    def version
+    def Version
       data["Version"].to_s
     end
-    cache :version
+    cache :Version
     
-    def group
+    def Group
       data["Group"].to_s
     end
-    cache :group
+    cache :Group
     
     def fields
       data.xpath("//sp:Field", NS).map { |field| scope.field(field["ID"]) }.compact
     end
     cache :fields, :dup => true
     
-    def attributes
-      {
-        "Name" => name,
-        "ID" => @id,
-        "Description" => description,
-        "Version" => version,
-        "Group" => group
-      }
-    end
-    cache :attributes, :dup => true
-    
     def to_s
-      "#<ActiveSP::ContentType name=#{name}>"
+      "#<ActiveSP::ContentType Name=#{self.Name}>"
     end
     
     alias inspect to_s
@@ -84,6 +73,26 @@ module ActiveSP
       end
     end
     cache :data
+    
+    def original_attributes
+      type_cast_attributes(@site, nil, internal_attribute_types, clean_item_attributes(data.attributes))
+    end
+    cache :original_attributes
+    
+    def internal_attribute_types
+      @@internal_attribute_types ||= {
+        "Description" => GhostField.new("ColName", "Text", false, true),
+        "FeatureId" => GhostField.new("ColName", "Text", false, true),
+        "Group" => GhostField.new("ColName", "Text", false, true),
+        "Hidden" => GhostField.new("Hidden", "Bool", false, true),
+        "ID" => GhostField.new("ColName", "Text", false, true),
+        "Name" => GhostField.new("ColName", "Text", false, true),
+        "ReadOnly" => GhostField.new("ReadOnly", "Bool", false, true),
+        "Sealed" => GhostField.new("Sealed", "Bool", false, true),
+        "V2ListTemplateName" => GhostField.new("V2ListTemplateName", "Text", false, true),
+        "Version" => GhostField.new("Version", "Integer", false, true)
+      }
+    end
     
     def split_id
       ["0x"] + @id[2..-1].scan(/[0-9A-F][1-9A-F]|[1-9A-F][0-9A-F]|00[0-9A-F]{32}/)
