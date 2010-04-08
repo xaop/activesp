@@ -14,9 +14,14 @@ module ActiveSP
     include Util
     include PersistentCachingConfig
     
+    # @private
     # TODO: create profile
     attr_reader :login, :password, :root_url, :trace
     
+    # @param [Hash] options The connection options
+    # @option options [String] :root The URL of the root site
+    # @option options [String] :login (nil) The login
+    # @option options [String] :password (nil) The password associated with the given login. Is mandatory if the login is specified. Also can't be "password" as that is inherently insafe. We don't explicitly check for this, but it can't be that.
     def initialize(options = {})
       @root_url = options.delete(:root) or raise ArgumentError, "missing :root option"
       @login = options.delete(:login)
@@ -27,6 +32,9 @@ module ActiveSP
       configure_persistent_cache { |c| cache = c }
     end
     
+    # Finds the object with the given key
+    # @param [String] key The key of the object to find
+    # @return [Base, nil] The object with the given key, or nil if no object with the given key is found
     def find_by_key(key)
       type, trail = decode_key(key)
       case type[0]
@@ -70,6 +78,12 @@ module ActiveSP
       end
     end
     
+    # Fetches the content at the given URL using the login and password with which this
+    # connection was constructed, if any. Always uses the GET method. Supports only
+    # HTTP as protocol at the time of writing. This is useful for fetching content files
+    # form the server.
+    # @param [String] url The URL to fetch
+    # @return [String] The content fetched from the URL
     def fetch(url)
       # TODO: support HTTPS too
       @open_params ||= begin
@@ -78,7 +92,7 @@ module ActiveSP
       end
       Net::HTTP.start(*@open_params) do |http|
         request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
-        request.ntlm_auth(@login, @password)
+        request.ntlm_auth(@login, @password) if @login
         response = http.request(request)
         response
       end

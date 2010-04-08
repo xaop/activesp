@@ -1,5 +1,6 @@
 module ActiveSP
   
+  # @private
   module Util
     
   private
@@ -74,6 +75,44 @@ module ActiveSP
         else
           # raise ArgumentError, "can't find field #{k.inspect}"
           warn "can't find field #{k.inspect} on #{self}"
+        end
+        h[k] = v
+        h
+      end
+    end
+    
+    def type_check_attribute(field, value)
+      case field.internal_type
+      when "Text"
+        value.to_s
+      when "Bool"
+        !!value
+      when "Integer"
+        Integer(value)
+      when "StandardDateTime", "XMLDateTime"
+        Time === value and value or raise ArgumentError, "wrong type for #{field.Name} attribute"
+      when "InternalUser"
+        value = value.to_s
+        @site.rootsite.user(value) and value or raise ArgumentError, "user with login #{value} does not exist for #{field.Name} attribute"
+      else
+        raise "not yet #{field.inspect}"
+      end
+    end
+    
+    def untype_cast_attributes(site, list, fields, attributes)
+      attributes.inject({}) do |h, (k, v)|
+        if field = fields[k]
+          case field.internal_type
+          when "Text"
+          when "Bool"
+            v = v ? "TRUE" : "FALSE"
+          when "Integer"
+            v = v.to_s
+          else
+            raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
+          end
+        else
+          raise "can't find field #{k.inspect} on #{self}"
         end
         h[k] = v
         h

@@ -7,9 +7,15 @@ module ActiveSP
     extend PersistentCaching
     include Util
     
-    attr_reader :site, :id
+    # The containing site
+    # @return [Site]
+    attr_reader :site
+    # The ID of the list
+    # @return [String]
+    attr_reader :id
     
     persistent { |site, id, *a| [site.connection, [:list, id]] }
+    # @private
     def initialize(site, id, title = nil, attributes_before_type_cast1 = nil, attributes_before_type_cast2 = nil)
       @site, @id = site, id
       @Title = title if title
@@ -17,6 +23,8 @@ module ActiveSP
       @attributes_before_type_cast2 = attributes_before_type_cast2 if attributes_before_type_cast2
     end
     
+    # The URL of the list
+    # @return [String]
     def url
       # Dirty. Used to use RootFolder, but if you get the data from the bulk calls, RootFolder is the empty
       # string rather than what it should be. That's what you get with web services as an afterthought I guess.
@@ -29,19 +37,30 @@ module ActiveSP
     end
     cache :url
     
+    # @private
     def relative_url
       @site.relative_url(url)
     end
     
+    # See {Base#key}
+    # @return [String]
     def key
       encode_key("L", [@site.key, @id])
     end
     
+    # @private
     def Title
       data1["Title"].to_s
     end
     cache :Title
     
+    # Returns the items in this list according to th given options. Note that this method does not
+    # recurse into folders. I believe specifying a folder of '' actually does recurse
+    # @param [Hash] options Options
+    # @option options [Folder] :folder (nil) The folder to search in
+    # @option options [String] :query (nil) The query to execute as an XML fragment
+    # @option options [Boolean] :no_preload (nil) If set to true, the attributes are not preloaded. Can be more efficient if you only need the list of items and not their attributes
+    # @return [Array<Item>]
     def items(options = {})
       folder = options.delete(:folder)
       query = options.delete(:query)
@@ -55,32 +74,17 @@ module ActiveSP
         view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
           %w[FSObjType ID UniqueId ServerUrl].each { |f| xml.FieldRef("Name" => f) }
         end
-        result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => viewFields, "queryOptions" => query_options }.merge(query))
-        result.xpath("//z:row", NS).map do |row|
-          attributes = clean_item_attributes(row.attributes)
-          (attributes["FSObjType"][/1$/] ? Folder : Item).new(
-            self,
-            attributes["ID"],
-            folder,
-            attributes["UniqueId"],
-            attributes["ServerUrl"]
-          )
+        get_list_items(view_fields, query_options, query) do |attributes|
+          create_item(folder, attributes, nil)
         end
       else
         begin
-          result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => "<ViewFields></ViewFields>", "queryOptions" => query_options }.merge(query))
-          result.xpath("//z:row", NS).map do |row|
-            attributes = clean_item_attributes(row.attributes)
-            (attributes["FSObjType"][/1$/] ? Folder : Item).new(
-              self,
-              attributes["ID"],
-              folder,
-              attributes["UniqueId"],
-              attributes["ServerUrl"],
-              attributes
-            )
+          get_list_items("<ViewFields></ViewFields>", query_options, query) do |attributes|
+            create_item(folder, attributes, attributes)
           end
         rescue Savon::SOAPFault => e
+          # This is where it gets ugly... Apparently there is a limit to the number of columns
+          # you can retrieve with this operation. Joy!
           if e.message[/lookup column threshold/]
             fields = self.fields.map { |f| f.name }
             split_factor = 2
@@ -94,9 +98,7 @@ module ActiveSP
                   fields[lo..hi].each { |f| xml.FieldRef("Name" => f) }
                 end
                 by_id = {}
-                result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options }.merge(query))
-                result.xpath("//z:row", NS).map do |row|
-                  attributes = clean_item_attributes(row.attributes)
+                get_list_items(view_fields, query_options, query) do |attributes|
                   by_id[attributes["ID"]] = attributes
                 end
                 parts << by_id
@@ -105,14 +107,7 @@ module ActiveSP
                 parts[1..-1].each do |part|
                   attrs.merge!(part[id])
                 end
-                (attrs["FSObjType"][/1$/] ? Folder : Item).new(
-                  self,
-                  attrs["ID"],
-                  folder,
-                  attrs["UniqueId"],
-                  attrs["ServerUrl"],
-                  attrs
-                )
+                create_item(folder, attrs, attrs)
               end
             rescue Savon::SOAPFault => e
               if e.message[/lookup column threshold/]
@@ -129,6 +124,8 @@ module ActiveSP
       end
     end
     
+    # Returns the item with the given name or nil if there is no item with tha given name
+    # @return [Item]
     def item(name)
       query = Builder::XmlMarkup.new.Query do |xml|
         xml.Where do |xml|
@@ -141,9 +138,7 @@ module ActiveSP
       items(:query => query).first
     end
     
-    def /(name)
-      item(name)
-    end
+    alias / item
     
     def fields
       data1.xpath("//sp:Field", NS).map do |field|
@@ -153,13 +148,14 @@ module ActiveSP
         end
       end.compact
     end
-    cache :fields, :dup => true
+    cache :fields, :dup => :always
     
     def fields_by_name
       fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
     end
-    cache :fields_by_name, :dup => true
+    cache :fields_by_name, :dup => :always
     
+    # @private
     def field(id)
       fields.find { |f| f.ID == id }
     end
@@ -170,8 +166,9 @@ module ActiveSP
         ContentType.new(@site, self, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
       end
     end
-    cache :content_types, :dup => true
+    cache :content_types, :dup => :always
     
+    # @private
     def content_type(id)
       content_types.find { |t| t.id == id }
     end
@@ -185,10 +182,18 @@ module ActiveSP
     end
     cache :permission_set
     
+    # See {Base#save}
+    # @return [void]
+    def save
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+    end
+    
+    # @private
     def to_s
       "#<ActiveSP::List Title=#{self.Title}>"
     end
     
+    # @private
     alias inspect to_s
     
   private
@@ -297,7 +302,25 @@ module ActiveSP
         { :mask => Integer(row["Mask"]), :accessor => accessor }
       end
     end
-    cache :permissions, :dup => true
+    cache :permissions, :dup => :always
+    
+    def get_list_items(view_fields, query_options, query)
+      result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => viewFields, "queryOptions" => query_options }.merge(query))
+      result.xpath("//z:row", NS).map do |row|
+        yield clean_item_attributes(row.attributes)
+      end
+    end
+    
+    def create_item(folder, attributes, all_attributes)
+      (attributes["FSObjType"][/1$/] ? Folder : Item).new(
+        self,
+        attributes["ID"],
+        folder,
+        attributes["UniqueId"],
+        attributes["ServerUrl"],
+        all_attributes
+      )
+    end
     
   end
   

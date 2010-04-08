@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'rake/gempackagetask'
+require 'yard'
 
 ACTIVESP_VERSION = File.readlines("VERSION")[0][/[\d.]*/]
 
@@ -31,4 +32,8 @@ end
 Rake::GemPackageTask.new(spec) do |pkg|
   pkg.need_zip = true
   pkg.need_tar = true
+end
+
+YARD::Rake::YardocTask.new do |t|
+  t.options = ['--no-private']
 end

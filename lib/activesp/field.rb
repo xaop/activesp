@@ -6,41 +6,62 @@ module ActiveSP
     extend Caching
     include Util
     
-    attr_reader :scope, :ID, :Name, :internal_type, :parent
+    # @private
+    attr_reader :ID, :Name, :internal_type
+    # Returns the scope of the field. This can be a site or a list
+    # @return [Site, List]
+    attr_reader :scope
+    # Returns the parent field. This is the field defined on the containing site in case the field has a list as scope
+    # @return [Field]
+    attr_reader :parent
     
     # There is no call to get to the field info directly, so these should always
     # be accessed through the site or list they belong to. Hence, we do not use
     # caching here as it is useless.
+    # @private
     def initialize(scope, id, name, type, parent, attributes_before_type_cast)
       @scope, @ID, @Name, @internal_type, @parent, @attributes_before_type_cast = scope, id, name, type, parent, attributes_before_type_cast
       @site = Site === @scope ? @scope : @scope.site
     end
     
+    # See {Base#key}
+    # @return [String]
     def key
       encode_key("A", [@scope.key, @ID])
     end
     
+    # @private
     def List
       list_for_lookup
     end
     
+    # @private
     def Type
       translate_internal_type(self)
     end
     
-    # This is only defined when it is true; joy to the world!
+    # @private
     def Mult
       !!attributes["Mult"]
     end
     
+    # @private
     def ReadOnly
       !!attributes["ReadOnly"]
     end
     
+    # See {Base#save}
+    # @return [void]
+    def save
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+    end
+    
+    # @private
     def to_s
       "#<ActiveSP::Field name=#{self.Name}>"
     end
     
+    # @private
     alias inspect to_s
     
   private
@@ -59,6 +80,10 @@ module ActiveSP
   
     def original_attributes
       @original_attributes ||= type_cast_attributes(@site, nil, internal_attribute_types, @attributes_before_type_cast.merge("List" => list_for_lookup, "Type" => self.Type, "internal_type" => internal_type))
+    end
+    
+    def current_attributes_before_type_cast
+      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
     end
     
     def internal_attribute_types

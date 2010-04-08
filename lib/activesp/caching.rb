@@ -1,6 +1,9 @@
 module ActiveSP
   
+  # @private
   module Caching
+    
+  private
     
     def cache(name, options = {})
       duplicate = options.delete(:dup)
@@ -14,8 +17,8 @@ module ActiveSP
           if defined? @#{name}
             @#{name}
           else
-            @#{name} = #{name}__uncached(*a, &b)
-          end#{".dup" if duplicate}
+            @#{name} = #{name}__uncached(*a, &b)#{".dup" if duplicate == :once}
+          end#{".dup" if duplicate == :always}
         end
         #{access} :#{name}
         undef reload if instance_methods.include?("reload")

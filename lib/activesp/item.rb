@@ -6,8 +6,11 @@ module ActiveSP
     extend Caching
     include Util
     
+    # Returns the list in which the item is located
+    # @return [List]
     attr_reader :list
     
+    # @private
     def initialize(list, id, folder, uid = nil, url = nil, attributes_before_type_cast = nil)
       @list, @id, @folder = list, id, folder
       @uid = uid if uid
@@ -16,34 +19,49 @@ module ActiveSP
       @attributes_before_type_cast = attributes_before_type_cast if attributes_before_type_cast
     end
     
+    # Returns the parent of this item
+    # @return [Folder, List]
     def parent
       @folder || @list
     end
     
+    # @private
     def id
       uid
     end
     
+    # @private
     def uid
       attributes["UniqueID"]
     end
     cache :uid
     
+    # The URL of this item
+    # @return [String]
     def url
       URL(@list.url).join(attributes["ServerUrl"]).to_s
     end
     cache :url
     
+    # See {Base#key}
+    # @return [String]
     def key
       encode_key("I", [parent.key, @id])
     end
     
+    # Returns a list of the URLs of the attachments of this item. Note that for items in a document
+    # library, this returns an empty list
+    # @return [Array<String>]
     def attachments
       result = call("Lists", "get_attachment_collection", "listName" => @list.id, "listItemID" => @id)
       result.xpath("//sp:Attachment", NS).map { |att| att.text }
     end
-    cache :attachments, :dup => true
+    cache :attachments, :dup => :always
     
+    # Returns a list of the content URLs for this item. For items in document libraries, this
+    # returns the url, for other items this returns the attachments. These URLs can be used
+    # to download all contents. See {Connection#fetch}
+    # @return [Array<String>]
     def content_urls
       case @list.attributes["BaseType"]
       when "0", "5"
@@ -54,8 +72,10 @@ module ActiveSP
         raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
       end
     end
-    cache :content_urls, :dup => true
+    cache :content_urls, :dup => :always
     
+    # Returns the content type of this item
+    # @return [ContentType]
     def content_type
       ContentType.new(@site, @list, attributes["ContentTypeId"])
     end
@@ -65,10 +85,18 @@ module ActiveSP
     #   call("Versions", "get_versions", "fileName" => attributes["ServerUrl"])
     # end
     
+    # See {Base#save}
+    # @return [void]
+    def save
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+    end
+    
+    # @private
     def to_s
       "#<ActiveSP::Item url=#{url}>"
     end
     
+    # @private
     alias inspect to_s
     
   private
@@ -99,6 +127,10 @@ module ActiveSP
       type_cast_attributes(@site, @list, @list.fields_by_name, attributes_before_type_cast)
     end
     cache :original_attributes
+    
+    def current_attributes_before_type_cast
+      untype_cast_attributes(@site, @list, @list.fields_by_name, current_attributes)
+    end
     
     def internal_attribute_types
       list.fields_by_name

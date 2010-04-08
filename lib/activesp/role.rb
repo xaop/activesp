@@ -7,42 +7,58 @@ module ActiveSP
     include Util
     include InSite
     
-    attr_reader :name
-    
     persistent { |site, name, *a| [site.connection, [:role, name]] }
+    # @private
     def initialize(site, name)
       @site, @name = site, name
     end
     
+    # See {Base#key}
+    # @return [String]
     def key
       encode_key("R", [@name])
     end
     
+    # Returns the list of users in this role
+    # @return [User]
     def users
       call("UserGroup", "get_user_collection_from_role", "roleName" => @name).xpath("//spdir:User", NS).map do |row|
         attributes = clean_attributes(row.attributes)
         User.new(@site, attributes["LoginName"])
       end
     end
-    cache :users, :dup => true
+    cache :users, :dup => :always
     
+    # Returns the list of groups in this role
+    # @return [Group]
     def groups
       call("UserGroup", "get_group_collection_from_role", "roleName" => @name).xpath("//spdir:Group", NS).map do |row|
         attributes = clean_attributes(row.attributes)
         Group.new(@site, attributes["Name"])
       end
     end
-    cache :groups, :dup => true
+    cache :groups, :dup => :always
     
+    # Returns true. The same method is present on {Group} where it returns false. Roles and groups can generally be
+    # duck-typed, and this method is there for the rare case where you do need to make the distinction
+    # @return [Boolean]
+    def is_role?
+      true
+    end
+    
+    # See {Base#save}
+    # @return [void]
+    def save
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+    end
+    
+    # @private
     def to_s
       "#<ActiveSP::Role name=#{@name}>"
     end
     
+    # @private
     alias inspect to_s
-    
-    def is_role?
-      true
-    end
     
   private
     
@@ -60,6 +76,10 @@ module ActiveSP
       type_cast_attributes(@site, nil, internal_attribute_types, attributes_before_type_cast)
     end
     cache :original_attributes
+    
+    def current_attributes_before_type_cast
+      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
+    end
     
     def internal_attribute_types
       @@internal_attribute_types ||= {

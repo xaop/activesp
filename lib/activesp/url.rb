@@ -1,3 +1,4 @@
+# @private
 def URL(*args)
   case args.length
   when 1
@@ -14,6 +15,7 @@ def URL(*args)
   end
 end
 
+# @private
 class URL < Struct.new(:protocol, :host, :port, :path, :query, :fragment)
   
   def self.parse(url)

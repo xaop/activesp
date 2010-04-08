@@ -7,21 +7,34 @@ module ActiveSP
     include Util
     include InSite
     
+    # @private
     attr_reader :login_name
     
     persistent { |site, login_name, *a| [site.connection, [:user, login_name]] }
-    def initialize(site, login_name)
+    # @private
+    def initialize(site, login_name, attributes_before_type_cast = nil)
       @site, @login_name = site, login_name
+      @attributes_before_type_cast = attributes_before_type_cast if attributes_before_type_cast
     end
     
+    # See {Base#key}
+    # @return [String]
     def key
       encode_key("U", [@login_name])
     end
     
+    # See {Base#save}
+    # @return [void]
+    def save
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+    end
+    
+    # @private
     def to_s
       "#<ActiveSP::User login_name=#{login_name}>"
     end
     
+    # @private
     alias inspect to_s
     
   private
@@ -40,6 +53,10 @@ module ActiveSP
       type_cast_attributes(@site, nil, internal_attribute_types, attributes_before_type_cast)
     end
     cache :original_attributes
+    
+    def current_attributes_before_type_cast
+      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
+    end
     
     def internal_attribute_types
       @@internal_attribute_types ||= {

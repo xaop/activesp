@@ -1,6 +1,9 @@
 module ActiveSP
   
+  # @private
   module PersistentCaching
+    
+  private
     
     def persistent(&blk)
       class << self ; self ; end.instance_eval do
@@ -18,6 +21,7 @@ module ActiveSP
     
   end
   
+  # @private
   class PersistentCache
     
     def initialize

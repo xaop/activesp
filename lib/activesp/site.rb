@@ -6,44 +6,64 @@ module ActiveSP
     extend PersistentCaching
     include Util
     
-    attr_reader :url, :connection
+    # The URL of this site
+    # @return [String]
+    attr_reader :url
+    # @private
+    attr_reader :connection
     
     persistent { |connection, url, *a| [connection, [:site, url]] }
+    # @private
     def initialize(connection, url, depth = 0)
       @connection, @url, @depth = connection, url, depth
       @services = {}
     end
     
+    # @private
     def relative_url(url = @url)
       url[@connection.root_url.rindex("/") + 1..-1]
     end
     
+    # Returns the containing site, or nil if this is the root site
+    # @return [Site]
     def supersite
-      if @depth > 0
+      unless is_root_site?
         Site.new(@connection, File.dirname(@url), @depth - 1)
       end
     end
     cache :supersite
     
+    # Returns the root site, or this site if it is the root site
+    # @return [Site]
     def rootsite
-      @depth > 0 ? supersite.rootsite : self
+      is_root_site? ? self : supersite.rootsite
     end
     cache :rootsite
     
+    # Returns true if this site is the root site
+    # @return [Boolean]
     def is_root_site?
       @depth == 0
     end
     
-    def key
+    # See {Base#key}
+    # @return [String]
+    def key # This documentation is not ideal. The ideal doesn't work out of the box
       encode_key("S", [@url[@connection.root_url.length + 1..-1], @depth])
     end
     
+    # Returns the list of sites below this site. Does not recurse
+    # @return [Array<List>]
     def sites
       result = call("Webs", "get_web_collection")
       result.xpath("//sp:Web", NS).map { |web| Site.new(connection, web["Url"].to_s, @depth + 1) }
     end
-    cache :sites, :dup => true
+    cache :sites, :dup => :always
     
+    # Returns the site with the given name. This name is what appears in the URL as name and is immutable. Return nil
+    # if such a site does not exist
+    # @param [String] name The name if the site
+    # @return [Site]
     def site(name)
       result = call("Webs", "get_web", "webUrl" => File.join(@url, name))
       Site.new(connection, result.xpath("//sp:Web", NS).first["Url"].to_s, @depth + 1)
@@ -51,6 +71,8 @@ module ActiveSP
       nil
     end
     
+    # Returns the list if lists in this sute. Does not recurse
+    # @return [Array<List>]
     def lists
       result1 = call("Lists", "get_list_collection")
       result2 = call("SiteData", "get_list_collection")
@@ -66,28 +88,42 @@ module ActiveSP
         List.new(self, list["ID"].to_s, list["Title"].to_s, clean_attributes(list.attributes), result2_by_id[list["ID"].to_s])
       end
     end
-    cache :lists, :dup => true
+    cache :lists, :dup => :always
     
+    # Returns the list with the given name. The name is what appears in the URL as name and is immutable. Returns nil
+    # if such a list does not exist
+    # @param [String] name The name of the list
+    # @return [List]
     def list(name)
-      lists.find { |list| File.basename(list.attributes["RootFolder"]) == name }
+      lists.find { |list| File.basename(list.url) == name }
     end
     
+    # Returns the site or list with the given name, or nil if it does not exist
+    # @param [String] name The name of the site or list
+    # @return [Site, List]
     def /(name)
       list(name) || site(name)
     end
     
+    # Returns the list of content types defined for this site. These include the content types defined on
+    # containing sites as they are automatically inherited
+    # @return [Array<ContentType>]
     def content_types
       result = call("Webs", "get_content_types", "listName" => @id)
       result.xpath("//sp:ContentType", NS).map do |content_type|
         supersite && supersite.content_type(content_type["ID"]) || ContentType.new(self, nil, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
       end
     end
-    cache :content_types, :dup => true
+    cache :content_types, :dup => :always
     
+    # @private
     def content_type(id)
       content_types.find { |t| t.id == id }
     end
     
+    # Returns the permission set associated with this site. This returns the permission set of
+    # the containing site if it does not have a permission set of its own
+    # @return [PermissionSet]
     def permission_set
       if attributes["InheritedSecurity"]
         supersite.permission_set
@@ -97,27 +133,40 @@ module ActiveSP
     end
     cache :permission_set
     
+    # Returns the list of fields for this site. This includes fields inherited from containing sites
+    # @return [Array<Field>]
     def fields
       call("Webs", "get_columns").xpath("//sp:Field", NS).map do |field|
         attributes = clean_attributes(field.attributes)
         supersite && supersite.field(attributes["ID"].downcase) || Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], nil, attributes) if attributes["ID"] && attributes["StaticName"]
       end.compact
     end
-    cache :fields, :dup => true
+    cache :fields, :dup => :always
     
+    # Returns the result of {Site#fields} hashed by name
+    # @return [Hash{String => Field}]
     def fields_by_name
       fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
     end
-    cache :fields_by_name, :dup => true
+    cache :fields_by_name, :dup => :always
     
+    # @private
     def field(id)
       fields.find { |f| f.ID == id }
     end
     
+    # See {Base#save}
+    # @return [void]
+    def save
+      p untype_cast_attributes(self, nil, internal_attribute_types, changed_attributes)
+    end
+    
+    # @private
     def to_s
       "#<ActiveSP::Site url=#{@url}>"
     end
     
+    # @private
     alias inspect to_s
     
   private
@@ -155,6 +204,10 @@ module ActiveSP
     end
     cache :original_attributes
     
+    def current_attributes_before_type_cast
+      untype_cast_attributes(self, nil, internal_attribute_types, current_attributes)
+    end
+    
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true),
@@ -182,8 +235,9 @@ module ActiveSP
         { :mask => Integer(row["Mask"]), :accessor => accessor }
       end
     end
-    cache :permissions, :dup => true
+    cache :permissions, :dup => :always
     
+    # @private
     class Service
       
       def initialize(site, name)

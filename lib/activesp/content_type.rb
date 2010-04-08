@@ -7,9 +7,11 @@ module ActiveSP
     extend PersistentCaching
     include Util
     
+    # @private
     attr_reader :id
     
     persistent { |site, list, id, *a| [site.connection, [:content_type, id]] }
+    # @private
     def initialize(site, list, id, name = nil, description = nil, version = nil, group = nil)
       @site, @list, @id = site, list, id
       @Name = name if name
@@ -18,49 +20,71 @@ module ActiveSP
       @Group = group if group
     end
     
+    # Returns the scope of the content type. This can be either a site or a list
+    # @return [Site, List]
     def scope
       @list || @site
     end
     
+    # Returns the supertype of this content type. This is the content type as defined on the containing
+    # site in case this content type has a list as scope. returns nil for a content type that has a site
+    # as scope
+    # @return [ContentType, nil]
     def supertype
       superkey = split_id[0..-2].join("")
       (@list ? @list.content_type(superkey) : nil) || @site.content_type(superkey)
     end
     cache :supertype
     
+    # See {Base#key}
+    # @return [String]
     def key
       encode_key("T", [scope.key, @id])
     end
     
+    # @private
     def Name
       data["Name"].to_s
     end
     cache :Name
     
+    # @private
     def Description
       data["Description"].to_s
     end
     cache :Description
     
+    # @private
     def Version
       data["Version"].to_s
     end
     cache :Version
     
+    # @private
     def Group
       data["Group"].to_s
     end
     cache :Group
     
+    # Returns the list of fields defined for this content type
+    # @return [Array<Field>]
     def fields
       data.xpath("//sp:Field", NS).map { |field| scope.field(field["ID"]) }.compact
     end
-    cache :fields, :dup => true
+    cache :fields, :dup => :always
     
+    # See {Base#save}
+    # @return [void]
+    def save
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+    end
+    
+    # @private
     def to_s
       "#<ActiveSP::ContentType Name=#{self.Name}>"
     end
     
+    # @private
     alias inspect to_s
     
   private
@@ -78,6 +102,10 @@ module ActiveSP
       type_cast_attributes(@site, nil, internal_attribute_types, clean_item_attributes(data.attributes))
     end
     cache :original_attributes
+    
+    def current_attributes_before_type_cast
+      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
+    end
     
     def internal_attribute_types
       @@internal_attribute_types ||= {

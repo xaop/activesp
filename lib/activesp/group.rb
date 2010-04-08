@@ -7,34 +7,48 @@ module ActiveSP
     include Util
     include InSite
     
-    # attr_reader :name
-    
     persistent { |site, name, *a| [site.connection, [:group, name]] }
+    # @private
     def initialize(site, name)
       @site, @name = site, name
     end
     
+    # See {Base#key}
+    # @return [String]
     def key
       encode_key("G", [@name])
     end
     
+    # Returns the list of users in this group
+    # @return [User]
     def users
       call("UserGroup", "get_user_collection_from_group", "groupName" => @name).xpath("//spdir:User", NS).map do |row|
         attributes = clean_attributes(row.attributes)
         User.new(@site, attributes["LoginName"])
       end
     end
-    cache :users, :dup => true
+    cache :users, :dup => :always
     
+    # Returns false. The same method is present on {Role} where it returns true. Roles and groups can generally be
+    # duck-typed, and this method is there for the rare case where you do need to make the distinction
+    # @return [Boolean]
+    def is_role?
+      false
+    end
+    
+    # See {Base#save}
+    # @return [void]
+    def save
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+    end
+    
+    # @private
     def to_s
       "#<ActiveSP::Group name=#{@name}>"
     end
     
+    # @private
     alias inspect to_s
-    
-    def is_role?
-      false
-    end
     
   private
     
@@ -52,6 +66,10 @@ module ActiveSP
       type_cast_attributes(@site, nil, internal_attribute_types, attributes_before_type_cast)
     end
     cache :original_attributes
+    
+    def current_attributes_before_type_cast
+      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
+    end
     
     def internal_attribute_types
       @@internal_attribute_types ||= {
