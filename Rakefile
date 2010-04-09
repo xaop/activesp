@@ -60,5 +60,5 @@ Rake::GemPackageTask.new(spec) do |pkg|
 end
 
 YARD::Rake::YardocTask.new do |t|
-  t.options = ['--no-private']
+  t.options = ['--no-private', '--readme', 'README.rdoc']
 end
