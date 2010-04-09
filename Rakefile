@@ -39,7 +39,7 @@ spec = Gem::Specification.new do |s|
   s.summary = "Interface to SharePoint"
   s.description = s.summary
   #s.rubyforge_project = s.name
-  s.files += %w(VERSION Rakefile)
+  s.files += %w(VERSION LICENSE README Rakefile)
   s.files += Dir['lib/**/*.rb']
   # s.bindir = "bin"
   # s.executables.push(*(Dir['bin/*.rb'] - ["bin/encrypt-dmcl.rb"]).map { |f| File.basename(f) })
