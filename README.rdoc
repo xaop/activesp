@@ -80,4 +80,4 @@ See the LICENSE file included in the distribution for further details.
 
 This library was written by XAOP, a small software development firm based near Brussels, Belgium.
 
-We want to stress-test our new hosting provider so please all visit us at http://www.xaop.com.
+Visit us at http://www.xaop.com.
