@@ -67,6 +67,7 @@ module ActiveSP
       current_attributes.has_key?(name)
     end
     
+    # See {Base#method_missing}
     def method_missing(m, *a, &b)
       ms = m.to_s
       if a.length == 0 && has_attribute?(ms)

@@ -25,6 +25,7 @@
 
 module ActiveSP
   
+  # The base class for all objects stored in SharePoint
   class Base
     
     extend Caching
@@ -88,6 +89,10 @@ module ActiveSP
       current_attributes[name] = type_check_attribute(field, value)
     end
     
+    # Provides convenient getters and setters for attributes. Note that no name mangling
+    # is done, so an attribute such a Title is accessed as obj.Title. The main rationale
+    # behind this is that name mangling is usually not lossless (e.g., both <tt>Title</tt>
+    # and <tt>title</tt> could map to the more Rubyish <tt>title</tt>) and imperfect.
     def method_missing(m, *a, &b)
       ms = m.to_s
       if a.length == 0 && has_attribute?(ms)

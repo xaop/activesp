@@ -330,7 +330,7 @@ module ActiveSP
     cache :permissions, :dup => :always
     
     def get_list_items(view_fields, query_options, query)
-      result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => viewFields, "queryOptions" => query_options }.merge(query))
+      result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options }.merge(query))
       result.xpath("//z:row", NS).map do |row|
         yield clean_item_attributes(row.attributes)
       end

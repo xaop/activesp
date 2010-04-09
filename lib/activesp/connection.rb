@@ -34,6 +34,8 @@ end
 
 module ActiveSP
   
+  # This class is uses to configure the connection to a SharePoint repository. This is
+  # the starting point for doing anything with SharePoint.
   class Connection
     
     include Util
@@ -54,7 +56,7 @@ module ActiveSP
       @trace = options.delete(:trace)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       cache = nil
-      configure_persistent_cache { |c| cache = c }
+      configure_persistent_cache { |c| cache ||= c }
     end
     
     # Finds the object with the given key

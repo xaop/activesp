@@ -1,0 +1,83 @@
+=== What?
+
+ActiveSP is a library for talking to SharePoint through its web services in an
+object-oriented way.
+
+At the moment it only provides read-only access. Write access is on the way!
+
+=== Why?
+
+Because Ruby is great and SharePoint's popularity is a fact of life.
+
+=== When?
+
+This library is pure Ruby and does not need a Ruby VM running on .NET (such as IronRuby).
+Use this library when using IronRuby is not an option, or when it needs to run on more
+than IronRuby.
+
+The web services are not fully functional and somewhat slow, so if you can use
+the .NET platform then consider talking to the .NET API's directly instead.
+
+=== How?
+
+Install the gem and its dependencies:
+
+  gem install activesp
+
+Create a file <tt>test.rb</tt> like this:
+
+  require 'rubygems'
+  require 'activesp'
+
+  def browse(item, indentation = 0)
+    puts "  " * indentation + "- " + item.class.to_s + " : " + item.url
+    case item
+    when ActiveSP::Site
+      puts "  " * indentation + "    Title = #{item.Title}, Description = #{item.Description}"
+      item.sites.each { |site| browse(site, indentation + 1) }
+      item.lists.each { |list| browse(list, indentation + 1) }
+    when ActiveSP::List
+      puts "  " * indentation + "    Description = #{item.Description}, Hidden = #{item.Hidden}"
+      item.items.each { |item| browse(item, indentation + 1) }
+    when ActiveSP::Folder
+      item.items.each { |item| browse(item, indentation + 1) }
+    when ActiveSP::Item
+      item.content_urls.each do |url|
+        puts "  " * indentation + "    Content URL = #{url}"
+      end
+    end
+  end
+
+  c = ActiveSP::Connection.new(:login => "your login", :password => "your password", :root => "URL of root site")
+
+  browse(c.root)
+
+Run <tt>ruby test.rb</tt> and it will print the structure of your SharePoint site.
+
+The examples directory contains this example plus a few others. We will add more along the way.
+
+=== Support
+
+We support read access to sites (webs), lists, items, documents, folders, content type,
+columns (fields), content, users, groups, roles.
+
+We do not yet support life cycles, versions, write support.
+
+=== Compatibility
+
+We have tested ActiveSP with SharePoint 2007 and SharePoint 2010. ActiveSP has been tested
+on Mac OS X with Ruby 1.8.6, but we do not see any reason why it would not work on Linux
+or Windows, or with other Ruby implementations.
+
+=== License
+
+ActiveSP is released under the MIT license. The usual disclaimers apply, including that we are
+not responsible for inevitable Ruby addiction.
+
+See the LICENSE file included in the distribution for further details.
+
+=== Who?
+
+This library was written by XAOP, a small software development firm based near Brussels, Belgium.
+
+We want to stress-test our new hosting provider so please all visit us at http://www.xaop.com/.
