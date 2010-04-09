@@ -1,4 +1,4 @@
-= ActiveSP Release 0.0.1 "Talk to the Devil" (Apr 9th 2010)
+= ActiveSP Release 0.0.1 "Space Oddity" (Apr 9th 2010)
 
 == What?
 
