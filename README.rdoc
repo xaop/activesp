@@ -1,15 +1,17 @@
-=== What?
+= ActiveSP Release 0.0.1 "Talk to the Devil" (Apr 9th 2010)
+
+== What?
 
 ActiveSP is a library for talking to SharePoint through its web services in an
 object-oriented way.
 
 At the moment it only provides read-only access. Write access is on the way!
 
-=== Why?
+== Why?
 
 Because Ruby is great and SharePoint's popularity is a fact of life.
 
-=== When?
+== When?
 
 This library is pure Ruby and does not need a Ruby VM running on .NET (such as IronRuby).
 Use this library when using IronRuby is not an option, or when it needs to run on more
@@ -18,7 +20,7 @@ than IronRuby.
 The web services are not fully functional and somewhat slow, so if you can use
 the .NET platform then consider talking to the .NET API's directly instead.
 
-=== How?
+== How?
 
 Install the gem and its dependencies:
 
@@ -56,28 +58,28 @@ Run <tt>ruby test.rb</tt> and it will print the structure of your SharePoint sit
 
 The examples directory contains this example plus a few others. We will add more along the way.
 
-=== Support
+== Support
 
 We support read access to sites (webs), lists, items, documents, folders, content type,
 columns (fields), content, users, groups, roles.
 
 We do not yet support life cycles, versions, write support.
 
-=== Compatibility
+== Compatibility
 
 We have tested ActiveSP with SharePoint 2007 and SharePoint 2010. ActiveSP has been tested
 on Mac OS X with Ruby 1.8.6, but we do not see any reason why it would not work on Linux
 or Windows, or with other Ruby implementations.
 
-=== License
+== License
 
 ActiveSP is released under the MIT license. The usual disclaimers apply, including that we are
 not responsible for inevitable Ruby addiction.
 
 See the LICENSE file included in the distribution for further details.
 
-=== Who?
+== Who?
 
-This library was written by XAOP, a small software development firm based near Brussels, Belgium.
+ActiveSP is copyright (c) 2010 XAOP bvba
 
 Visit us at http://www.xaop.com.
