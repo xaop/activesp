@@ -38,7 +38,7 @@ spec = Gem::Specification.new do |s|
   s.homepage = "http://www.xaop.com/labs/activesp"
   s.summary = "Interface to SharePoint"
   s.description = "An object-oriented interface to SharePoint that uses the web services provided by SharePoint to connect to it. Supports SharePoint 2007 and 2010."
-  s.files += %w(VERSION LICENSE README Rakefile)
+  s.files += %w(VERSION LICENSE README.rdoc Rakefile)
   s.files += Dir['lib/**/*.rb']
   # s.bindir = "bin"
   # s.executables.push(*(Dir['bin/*.rb']))

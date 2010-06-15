@@ -95,11 +95,13 @@ module ActiveSP
           
           else
             # raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
-            warn "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
+            # Note: can't print self if it needs the attributes to be loaded, so just display the class
+            warn "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on #{self.class}"
           end
         else
           # raise ArgumentError, "can't find field #{k.inspect}"
-          warn "can't find field #{k.inspect} on #{self}"
+          # Note: can't print self if it needs the attributes to be loaded, so just display the class
+          warn "can't find field #{k.inspect} on #{self.class}"
         end
         h[k] = v
         h
