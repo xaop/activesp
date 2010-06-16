@@ -82,7 +82,7 @@ module ActiveSP
     # Returns the items in this list according to th given options. Note that this method does not
     # recurse into folders. I believe specifying a folder of '' actually does recurse
     # @param [Hash] options Options
-    # @option options [Folder] :folder (nil) The folder to search in
+    # @option options [Folder, :all] :folder (nil) The folder to search in
     # @option options [String] :query (nil) The query to execute as an XML fragment
     # @option options [Boolean] :no_preload (nil) If set to true, the attributes are not preloaded. Can be more efficient if you only need the list of items and not their attributes
     # @return [Array<Item>]
@@ -93,7 +93,7 @@ module ActiveSP
       no_preload = options.delete(:no_preload)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       query_options = Builder::XmlMarkup.new.QueryOptions do |xml|
-        xml.Folder(folder.url) if folder
+        xml.Folder(folder == :all ? "" : folder.url) if folder
       end
       if no_preload
         view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
@@ -164,6 +164,33 @@ module ActiveSP
     end
     
     alias / item
+    
+    def changes_since_token(token, options = {})
+      no_preload = options.delete(:no_preload)
+      options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
+      
+      if no_preload
+        view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
+          %w[FSObjType ID UniqueId ServerUrl].each { |f| xml.FieldRef("Name" => f) }
+        end
+      else
+        view_fields = Builder::XmlMarkup.new.ViewFields
+      end
+      result = call("Lists", "get_list_item_changes_since_token", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields)
+      updates = []
+      result.xpath("//z:row", NS).each do |row|
+        attributes = clean_item_attributes(row.attributes)
+        updates << create_item(:unset, attributes, no_preload ? nil : attributes)
+      end
+      deletes = []
+      result.xpath("//sp:Changes/sp:Id", NS).each do |row|
+        if row["ChangeType"].to_s == "Delete"
+          deletes << encode_key("I", [key, row.text.to_s])
+        end
+      end
+      new_token = result.xpath("//sp:Changes", NS).first["LastChangeToken"].to_s
+      { :updates => updates, :deletes => deletes, :new_token => new_token }
+    end
     
     def fields
       data1.xpath("//sp:Field", NS).map do |field|
@@ -340,7 +367,7 @@ module ActiveSP
       (attributes["FSObjType"][/1$/] ? Folder : Item).new(
         self,
         attributes["ID"],
-        folder,
+        folder == :all ? :unset : folder,
         attributes["UniqueId"],
         attributes["ServerUrl"],
         all_attributes

@@ -80,19 +80,11 @@ module ActiveSP
       when ?P
         ActiveSP::PermissionSet.new(find_by_key(trail[0]))
       when ?F
-        parent = find_by_key(trail[0])
-        if ActiveSP::Folder === parent
-          ActiveSP::Folder.new(parent.list, trail[1], parent)
-        else
-          ActiveSP::Folder.new(parent, trail[1], nil)
-        end
+        list = find_by_key(trail[0])
+        ActiveSP::Folder.new(list, trail[1])
       when ?I
-        parent = find_by_key(trail[0])
-        if ActiveSP::Folder === parent
-          ActiveSP::Item.new(parent.list, trail[1], parent)
-        else
-          ActiveSP::Item.new(parent, trail[1], nil)
-        end
+        list = find_by_key(trail[0])
+        ActiveSP::Item.new(list, trail[1])
       when ?T
         parent = find_by_key(trail[0])
         if ActiveSP::List === parent

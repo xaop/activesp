@@ -30,7 +30,7 @@ module ActiveSP
     # See {Base#key}
     # @return [String]
     def key
-      encode_key("F", [parent.key, @id])
+      encode_key("F", [@list.key, @id])
     end
     
     # Returns the list of items in this folder

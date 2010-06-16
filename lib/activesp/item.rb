@@ -36,18 +36,26 @@ module ActiveSP
     attr_reader :list
     
     # @private
-    def initialize(list, id, folder, uid = nil, url = nil, attributes_before_type_cast = nil)
-      @list, @id, @folder = list, id, folder
+    def initialize(list, id, folder = :unset, uid = nil, url = nil, attributes_before_type_cast = nil)
+      @list, @id = list, id
+      @folder = folder if folder != :unset # We have to allow for nil
       @uid = uid if uid
       @site = list.site
       @url = url if url
       @attributes_before_type_cast = attributes_before_type_cast if attributes_before_type_cast
     end
     
-    # Returns the parent of this item
+    # Returns the folder, if any, that this item is located in. NOT FULLY IMPLEMENTED YET
+    # @return [Folder, nil]
+    def folder
+      raise ImplementationError, "finding the folder of an item is not supported yet"
+    end
+    cache :folder
+    
+    # Returns the parent of this item. NOT FULLY IMPLEMENTED YET
     # @return [Folder, List]
     def parent
-      @folder || @list
+      folder || @list
     end
     
     # @private
@@ -71,7 +79,7 @@ module ActiveSP
     # See {Base#key}
     # @return [String]
     def key
-      encode_key("I", [parent.key, @id])
+      encode_key("I", [@list.key, @id])
     end
     
     # Returns a list of the URLs of the attachments of this item. Note that for items in a document
