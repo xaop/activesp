@@ -39,7 +39,7 @@ module ActiveSP
     end
     
     def type_cast_attributes(site, list, fields, attributes)
-      attributes.inject({}) do |h, (k, v)|
+      result = attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
           case field.internal_type
           when "ListReference"
@@ -106,6 +106,10 @@ module ActiveSP
         h[k] = v
         h
       end
+      fields.each_key do |k|
+        result[k] = nil unless result.has_key?(k)
+      end
+      result
     end
     
     def type_check_attribute(field, value)
