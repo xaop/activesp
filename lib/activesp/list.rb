@@ -111,7 +111,7 @@ module ActiveSP
           # This is where it gets ugly... Apparently there is a limit to the number of columns
           # you can retrieve with this operation. Joy!
           if e.message[/lookup column threshold/]
-            fields = self.fields.map { |f| f.name }
+            fields = self.fields.map { |f| f.Name }
             split_factor = 2
             begin
               split_size = (fields.length + split_factor - 1) / split_factor
