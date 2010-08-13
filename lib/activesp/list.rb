@@ -172,7 +172,6 @@ module ActiveSP
       destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(File.join(url, file_name)))
       fields = construct_xml_for_attributes(@site, self, fields_by_name, parameters)
       source_url = escape_xml(file_name)
-      puts destination_urls
       case attributes["BaseType"] # List
       # when "0", "5"
       when "1" # Document library
