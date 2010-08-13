@@ -79,6 +79,10 @@ module ActiveSP
     
   private
     
+    def current_attributes
+      original_attributes
+    end
+    
     def original_attributes
       @original_attributes ||= {
         "ColName" => @Name,

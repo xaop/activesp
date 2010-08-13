@@ -100,12 +100,12 @@ module ActiveSP
           %w[FSObjType ID UniqueId ServerUrl].each { |f| xml.FieldRef("Name" => f) }
         end
         get_list_items(view_fields, query_options, query) do |attributes|
-          create_item(folder, attributes, nil)
+          construct_item(folder, attributes, nil)
         end
       else
         begin
           get_list_items("<ViewFields></ViewFields>", query_options, query) do |attributes|
-            create_item(folder, attributes, attributes)
+            construct_item(folder, attributes, attributes)
           end
         rescue Savon::SOAPFault => e
           # This is where it gets ugly... Apparently there is a limit to the number of columns
@@ -132,7 +132,7 @@ module ActiveSP
                 parts[1..-1].each do |part|
                   attrs.merge!(part[id])
                 end
-                create_item(folder, attrs, attrs)
+                construct_item(folder, attrs, attrs)
               end
             rescue Savon::SOAPFault => e
               if e.message[/lookup column threshold/]
@@ -165,6 +165,30 @@ module ActiveSP
     
     alias / item
     
+    def create_item(parameters = {})
+      content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
+      file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
+      raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name)
+      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(File.join(url, file_name)))
+      fields = construct_xml_for_attributes(@site, self, fields_by_name, parameters)
+      source_url = escape_xml(file_name)
+      puts destination_urls
+      case attributes["BaseType"] # List
+      # when "0", "5"
+      when "1" # Document library
+        result = call("Copy", "copy_into_items", "DestinationUrls" => destination_urls, "Stream" => Base64.encode64(content.to_s), "SourceUrl" => source_url, "Fields" => fields)
+        copy_result = result.xpath("//sp:CopyResult", NS).first
+        error_code = copy_result["ErrorCode"]
+        if error_code != "Success"
+          raise "#{error_code} : #{copy_result["ErrorMessage"]}"
+        else
+          item(file_name)
+        end
+      else
+        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
+      end
+    end
+    
     def changes_since_token(token, options = {})
       no_preload = options.delete(:no_preload)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
@@ -180,7 +204,7 @@ module ActiveSP
       updates = []
       result.xpath("//z:row", NS).each do |row|
         attributes = clean_item_attributes(row.attributes)
-        updates << create_item(:unset, attributes, no_preload ? nil : attributes)
+        updates << construct_item(:unset, attributes, no_preload ? nil : attributes)
       end
       deletes = []
       result.xpath("//sp:Changes/sp:Id", NS).each do |row|
@@ -281,6 +305,10 @@ module ActiveSP
     end
     cache :original_attributes
     
+    def current_attributes_before_type_cast
+      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
+    end
+    
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true),
@@ -363,7 +391,7 @@ module ActiveSP
       end
     end
     
-    def create_item(folder, attributes, all_attributes)
+    def construct_item(folder, attributes, all_attributes)
       (attributes["FSObjType"][/1$/] ? Folder : Item).new(
         self,
         attributes["ID"],

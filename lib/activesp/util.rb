@@ -81,14 +81,14 @@ module ActiveSP
           when "Lookup"
             d = split_multi(v)
             if field.List
-              v = create_item_from_id(field.List, d[0])
+              v = construct_item_from_id(field.List, d[0])
             else
               v = d[2]
             end
           when "LookupMulti"
             d = split_multi(v)
             if field.List
-              v = (0...(d.length / 4)).map { |i| create_item_from_id(field.List, d[4 * i]) }
+              v = (0...(d.length / 4)).map { |i| construct_item_from_id(field.List, d[4 * i]) }
             else
               v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
             end
@@ -150,6 +150,21 @@ module ActiveSP
       end
     end
     
+    def construct_xml_for_attributes(site, list, fields, attributes)
+      raw_attributes = untype_cast_attributes(site, list, fields, attributes)
+      raw_attributes.map do |k, v|
+        field = fields[k]
+        Builder::XmlMarkup.new.wsdl(
+          :FieldInformation,
+          "Type" => field.internal_type,
+          "Id" => field.ID,
+          "Value" => v,
+          "InternalName" => field.StaticName,
+          "DisplayName" => field.DisplayName
+        )
+      end.join("")
+    end
+    
     def encode_key(type, trail)
       "#{type}::#{trail.map { |t| t.to_s.gsub(/:/, ":-") }.join("::")}"
     end
@@ -164,7 +179,7 @@ module ActiveSP
       s.scan(/((?:[^;]|;;#|;[^#;]|;;(?!#))+)(;#)?/).flatten
     end
     
-    def create_item_from_id(list, id)
+    def construct_item_from_id(list, id)
       query = Builder::XmlMarkup.new.Query do |xml|
         xml.Where do |xml|
           xml.Eq do |xml|
@@ -201,6 +216,11 @@ module ActiveSP
       else
         "Text"
       end
+    end
+    
+    # Somewhat dirty
+    def escape_xml(xml)
+      Builder::XmlMarkup.new.s(xml).scan(/\A<s>(.*)<\/s>\z/)
     end
     
   end
