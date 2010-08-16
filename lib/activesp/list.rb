@@ -413,7 +413,6 @@ module ActiveSP
           construct_xml_for_update_list_items(xml, @site, self, fields_by_name, parameters)
         end
       end
-      puts updates
       result = call("Lists", "update_list_items", "listName" => self.id, "updates" => updates)
       create_result = result.xpath("//sp:Result", NS).first
       error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
