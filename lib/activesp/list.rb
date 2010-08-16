@@ -166,25 +166,13 @@ module ActiveSP
     alias / item
     
     def create_item(parameters = {})
-      content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
-      file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
-      raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name)
-      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(File.join(url, file_name)))
-      fields = construct_xml_for_attributes(@site, self, fields_by_name, parameters)
-      source_url = escape_xml(file_name)
-      case attributes["BaseType"] # List
-      # when "0", "5"
+      case attributes["BaseType"]
+      when "0", "5" # List
+        create_list_item(parameters)
       when "1" # Document library
-        result = call("Copy", "copy_into_items", "DestinationUrls" => destination_urls, "Stream" => Base64.encode64(content.to_s), "SourceUrl" => source_url, "Fields" => fields)
-        copy_result = result.xpath("//sp:CopyResult", NS).first
-        error_code = copy_result["ErrorCode"]
-        if error_code != "Success"
-          raise "#{error_code} : #{copy_result["ErrorMessage"]}"
-        else
-          item(file_name)
-        end
+        create_document(parameters)
       else
-        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
+        raise "not yet BaseType = #{attributes["BaseType"].inspect}"
       end
     end
     
@@ -399,6 +387,42 @@ module ActiveSP
         attributes["ServerUrl"],
         all_attributes
       )
+    end
+    
+    def create_document(parameters)
+      content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
+      file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
+      raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name)
+      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(File.join(url, file_name)))
+      fields = construct_xml_for_copy_into_items(@site, self, fields_by_name, parameters)
+      source_url = escape_xml(file_name)
+      result = call("Copy", "copy_into_items", "DestinationUrls" => destination_urls, "Stream" => Base64.encode64(content.to_s), "SourceUrl" => source_url, "Fields" => fields)
+      copy_result = result.xpath("//sp:CopyResult", NS).first
+      error_code = copy_result["ErrorCode"]
+      if error_code != "Success"
+        raise "#{error_code} : #{copy_result["ErrorMessage"]}"
+      else
+        item(file_name)
+      end
+    end
+    
+    def create_list_item(parameters)
+      updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
+        xml.Method("ID" => 1, "Cmd" => "New") do
+          xml.Field("New", "Name" => "ID")
+          construct_xml_for_update_list_items(xml, @site, self, fields_by_name, parameters)
+        end
+      end
+      puts updates
+      result = call("Lists", "update_list_items", "listName" => self.id, "updates" => updates)
+      create_result = result.xpath("//sp:Result", NS).first
+      error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
+      if error_code == 0
+        row = result.xpath("//z:row", NS).first
+        construct_item(nil, clean_item_attributes(row.attributes), nil)
+      else
+        raise "cannot create item, error code = #{error_code}"
+      end
     end
     
   end

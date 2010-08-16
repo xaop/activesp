@@ -150,7 +150,7 @@ module ActiveSP
       end
     end
     
-    def construct_xml_for_attributes(site, list, fields, attributes)
+    def construct_xml_for_copy_into_items(site, list, fields, attributes)
       raw_attributes = untype_cast_attributes(site, list, fields, attributes)
       raw_attributes.map do |k, v|
         field = fields[k]
@@ -163,6 +163,14 @@ module ActiveSP
           "DisplayName" => field.DisplayName
         )
       end.join("")
+    end
+    
+    def construct_xml_for_update_list_items(xml, site, list, fields, attributes)
+      raw_attributes = untype_cast_attributes(site, list, fields, attributes)
+      raw_attributes.map do |k, v|
+        field = fields[k]
+        xml.Field(v, "Name" => field.StaticName)
+      end
     end
     
     def encode_key(type, trail)
