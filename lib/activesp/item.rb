@@ -152,6 +152,23 @@ module ActiveSP
       self
     end
     
+    def destroy
+      updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
+        xml.Method("ID" => 1, "Cmd" => "Delete") do
+          xml.Field(self.ID, "Name" => "ID")
+        end
+      end
+      result = call("Lists", "update_list_items", "listName" => @list.id, "updates" => updates)
+      create_result = result.xpath("//sp:Result", NS).first
+      error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
+      if error_code == 0
+        @ID = nil
+      else
+        raise "cannot create item, error code = #{error_code}"
+      end
+      self
+    end
+    
   private
     
     def data
