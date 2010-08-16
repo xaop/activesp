@@ -46,7 +46,7 @@ module ActiveSP
           end#{".dup" if duplicate == :always}
         end
         #{access} :#{name}
-        undef reload if instance_methods.include?("reload")
+        remove_method(:reload) if instance_methods(false).include?("reload")
         def reload
           #{@cached_methods.map { |m| "remove_instance_variable(:@#{m}) if defined?(@#{m})" }.join(';')}
           super if defined? super
