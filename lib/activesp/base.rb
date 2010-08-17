@@ -29,6 +29,7 @@ module ActiveSP
   class Base
     
     extend Caching
+    extend Associations
     
     # Returns a key that can be used to retrieve this object later on using {Connection#find_by_key}
     # @return [String]

@@ -23,30 +23,56 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-require 'nokogiri'
-require 'time'
-
 module ActiveSP
+  
+  # @private
+  module Associations
+    
+    class AssociationProxy
+      
+      include Enumerable
+      
+      def initialize(object, &element_getter)
+        @object = object
+        @element_getter = element_getter
+      end
+      
+      def each(&blk)
+        elements.each(&blk)
+      end
+      
+      def first
+        elements.first
+      end
+      
+      def last
+        elements.last
+      end
+      
+      def reload
+        @elements = nil
+      end
+      
+    private
+      
+      def elements
+        @elements ||= @element_getter.call
+      end
+      
+    end
+    
+  private
+    
+    def association(name, &blk)
+      proxy = Class.new(AssociationProxy, &blk)
+      old_method = instance_method(name)
+      define_method(name) do |*a|
+        proxy.new(self) do
+          old_method.bind(self).call(*a)
+        end
+      end
+    end
+    
+  end
+  
 end
-
-require 'activesp/util'
-require 'activesp/caching'
-require 'activesp/associations'
-require 'activesp/persistent_caching'
-
-require 'activesp/base'
-
-require 'activesp/connection'
-require 'activesp/root'
-require 'activesp/site'
-require 'activesp/list'
-require 'activesp/item'
-require 'activesp/folder'
-require 'activesp/url'
-require 'activesp/content_type'
-require 'activesp/field'
-require 'activesp/ghost_field'
-require 'activesp/user'
-require 'activesp/group'
-require 'activesp/role'
-require 'activesp/permission_set'

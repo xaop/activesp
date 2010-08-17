@@ -148,6 +148,11 @@ module ActiveSP
         end
       end
     end
+    association :items do
+      def create(parameters = {})
+        @object.create_item(parameters)
+      end
+    end
     
     # Returns the item with the given name or nil if there is no item with tha given name
     # @return [Item]
