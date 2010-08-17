@@ -53,9 +53,9 @@ module ActiveSP
     def url
       # Dirty. Used to use RootFolder, but if you get the data from the bulk calls, RootFolder is the empty
       # string rather than what it should be. That's what you get with web services as an afterthought I guess.
-      view_url = File.dirname(attributes["DefaultViewUrl"])
+      view_url = ::File.dirname(attributes["DefaultViewUrl"])
       result = URL(@site.url).join(view_url).to_s
-      if File.basename(result) == "Forms" and dir = File.dirname(result) and dir.length > @site.url.length
+      if ::File.basename(result) == "Forms" and dir = ::File.dirname(result) and dir.length > @site.url.length
         result = dir
       end
       result
@@ -398,7 +398,7 @@ module ActiveSP
       content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
       file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
       raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name)
-      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(File.join(url, file_name)))
+      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(url, file_name)))
       fields = construct_xml_for_copy_into_items(@site, self, fields_by_name, parameters)
       source_url = escape_xml(file_name)
       result = call("Copy", "copy_into_items", "DestinationUrls" => destination_urls, "Stream" => Base64.encode64(content.to_s), "SourceUrl" => source_url, "Fields" => fields)

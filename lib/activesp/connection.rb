@@ -66,7 +66,7 @@ module ActiveSP
       type, trail = decode_key(key)
       case type[0]
       when ?S
-        ActiveSP::Site.new(self, trail[0] == "" ? @root_url : File.join(@root_url, trail[0]), trail[1].to_i)
+        ActiveSP::Site.new(self, trail[0] == "" ? @root_url : ::File.join(@root_url, trail[0]), trail[1].to_i)
       when ?L
         ActiveSP::List.new(find_by_key(trail[0]), trail[1])
       when ?U

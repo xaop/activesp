@@ -53,7 +53,7 @@ module ActiveSP
     # @return [Site]
     def supersite
       unless is_root_site?
-        Site.new(@connection, File.dirname(@url), @depth - 1)
+        Site.new(@connection, ::File.dirname(@url), @depth - 1)
       end
     end
     cache :supersite
@@ -90,7 +90,7 @@ module ActiveSP
     # @param [String] name The name if the site
     # @return [Site]
     def site(name)
-      result = call("Webs", "get_web", "webUrl" => File.join(@url, name))
+      result = call("Webs", "get_web", "webUrl" => ::File.join(@url, name))
       Site.new(connection, result.xpath("//sp:Web", NS).first["Url"].to_s, @depth + 1)
     rescue Savon::SOAPFault
       nil
@@ -120,7 +120,7 @@ module ActiveSP
     # @param [String] name The name of the list
     # @return [List]
     def list(name)
-      lists.find { |list| File.basename(list.url) == name }
+      lists.find { |list| ::File.basename(list.url) == name }
     end
     
     # Returns the site or list with the given name, or nil if it does not exist
@@ -254,7 +254,7 @@ module ActiveSP
     end
     
     def permissions
-      result = call("Permissions", "get_permission_collection", "objectName" => File.basename(@url), "objectType" => "Web")
+      result = call("Permissions", "get_permission_collection", "objectName" => ::File.basename(@url), "objectType" => "Web")
       result.xpath("//spdir:Permission", NS).map do |row|
         accessor = row["MemberIsUser"][/true/i] ? User.new(rootsite, row["UserLogin"]) : Group.new(rootsite, row["GroupName"])
         { :mask => Integer(row["Mask"]), :accessor => accessor }
@@ -267,7 +267,7 @@ module ActiveSP
       
       def initialize(site, name)
         @site, @name = site, name
-        @client = Savon::Client.new(File.join(site.url, "_vti_bin", name + ".asmx?WSDL"))
+        @client = Savon::Client.new(::File.join(site.url, "_vti_bin", name + ".asmx?WSDL"))
         @client.request.ntlm_auth(site.connection.login, site.connection.password) if site.connection.login
       end
       

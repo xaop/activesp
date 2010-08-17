@@ -86,10 +86,57 @@ module ActiveSP
     # library, this returns an empty list
     # @return [Array<String>]
     def attachment_urls
-      result = call("Lists", "get_attachment_collection", "listName" => @list.id, "listItemID" => @id)
-      result.xpath("//sp:Attachment", NS).map { |att| att.text }
+      case @list.attributes["BaseType"]
+      when "0", "5"
+        result = call("Lists", "get_attachment_collection", "listName" => @list.id, "listItemID" => @id)
+        result.xpath("//sp:Attachment", NS).map { |att| att.text }
+      when "1"
+        raise TypeError, "a document library does not support attachments"
+      else
+        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
+      end
     end
     cache :attachment_urls, :dup => :always
+    
+    def each_attachment
+      attachment_urls.each { |url| yield ActiveSP::File.new(self, url, true) }
+    end
+    
+    def add_attachment(parameters = {})
+      case @list.attributes["BaseType"]
+      when "0", "5"
+        content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
+        file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
+        result = call("Lists", "add_attachment", "listName" => @list.ID, "listItemID" => self.ID, "fileName" => file_name, "attachment" => Base64.encode64(content.to_s))
+        add_result = result.xpath("//sp:AddAttachmentResult", NS).first
+        if add_result
+          ActiveSP::File.new(@site.connection, add_result.text, true)
+        else
+          raise "cannot add attachment"
+        end
+      when "1"
+        raise TypeError, "a document library does not support attachments"
+      else
+        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
+      end
+    end
+    
+    association :attachments do
+      def create(parameters = {})
+        @object.add_attachment(parameters)
+      end
+    end
+    
+    def content
+      case @list.attributes["BaseType"]
+      when "0", "5"
+        raise TypeError, "a list has attachments"
+      when "1"
+        ActiveSP::File.new(@site.connection, url, false)
+      else
+        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
+      end
+    end
     
     # Returns a list of the content URLs for this item. For items in document libraries, this
     # returns the url, for other items this returns the attachments. These URLs can be used

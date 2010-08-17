@@ -23,31 +23,49 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-require 'nokogiri'
-require 'time'
-
 module ActiveSP
+  
+  class File
+    
+    include InSite
+    
+    attr_reader :url
+    
+    def initialize(item, url, destroyable)
+      @item, @url, @destroyable = item, url, destroyable
+      @site = @item.list.site
+    end
+    
+    def file_name
+      ::File.basename(@url)
+    end
+    
+    def data
+      @item.list.site.connection.fetch(@url).body
+    end
+    
+    def destroy
+      if @destroyable
+        result = call("Lists", "delete_attachment", "listName" => @item.list.id, "listItemID" => @item.ID, "url" => @url)
+        if delete_result = result.xpath("//sp:DeleteAttachmentResponse", NS).first
+          self
+        else
+          raise "file could not be deleted"
+        end
+      else
+        raise TypeError, "this file cannot be destroyed"
+      end
+    end
+    
+    # @private
+    def to_s
+      "#<ActiveSP::File url=#{@url}>"
+    end
+    
+    # @private
+    alias inspect to_s
+    
+  end
+  
 end
 
-require 'activesp/util'
-require 'activesp/caching'
-require 'activesp/associations'
-require 'activesp/persistent_caching'
-
-require 'activesp/base'
-
-require 'activesp/connection'
-require 'activesp/root'
-require 'activesp/site'
-require 'activesp/list'
-require 'activesp/item'
-require 'activesp/folder'
-require 'activesp/url'
-require 'activesp/content_type'
-require 'activesp/field'
-require 'activesp/ghost_field'
-require 'activesp/user'
-require 'activesp/group'
-require 'activesp/role'
-require 'activesp/permission_set'
-require 'activesp/file'

@@ -59,7 +59,11 @@ module ActiveSP
   private
     
     def association(name, each_method = ("each_" + name.to_s.sub(/s\z/, "")).to_sym, &blk)
-      proxy = Class.new(AssociationProxy, &blk)
+      proxy = Class.new(AssociationProxy) do
+        class_eval(&blk) if blk
+        define_method(:to_s) { "#{@object.to_s}.#{name}" }
+        define_method(:inspect) { "#{@object.inspect}.#{name}" }
+      end
       define_method(name) do |*a|
         proxy.new(self) do |blk|
           send(each_method, *a, &blk)

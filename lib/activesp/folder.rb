@@ -57,9 +57,6 @@ module ActiveSP
     
     alias / item
     
-    undef attachment_urls
-    undef content_urls
-    
     # @private
     def to_s
       "#<ActiveSP::Folder url=#{url}>"
