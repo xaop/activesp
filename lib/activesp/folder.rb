@@ -57,7 +57,7 @@ module ActiveSP
     
     alias / item
     
-    undef attachments
+    undef attachment_urls
     undef content_urls
     
     # @private
