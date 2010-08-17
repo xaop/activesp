@@ -85,11 +85,11 @@ module ActiveSP
     # Returns a list of the URLs of the attachments of this item. Note that for items in a document
     # library, this returns an empty list
     # @return [Array<String>]
-    def attachments
+    def attachment_urls
       result = call("Lists", "get_attachment_collection", "listName" => @list.id, "listItemID" => @id)
       result.xpath("//sp:Attachment", NS).map { |att| att.text }
     end
-    cache :attachments, :dup => :always
+    cache :attachment_urls, :dup => :always
     
     # Returns a list of the content URLs for this item. For items in document libraries, this
     # returns the url, for other items this returns the attachments. These URLs can be used
@@ -98,7 +98,7 @@ module ActiveSP
     def content_urls
       case @list.attributes["BaseType"]
       when "0", "5"
-        attachments
+        attachment_urls
       when "1"
         [url]
       else
