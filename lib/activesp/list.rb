@@ -86,7 +86,7 @@ module ActiveSP
     # @option options [String] :query (nil) The query to execute as an XML fragment
     # @option options [Boolean] :no_preload (nil) If set to true, the attributes are not preloaded. Can be more efficient if you only need the list of items and not their attributes
     # @return [Array<Item>]
-    def items(options = {})
+    def each_item(options = {})
       folder = options.delete(:folder)
       query = options.delete(:query)
       query = query ? { "query" => query } : {}
@@ -100,12 +100,12 @@ module ActiveSP
           %w[FSObjType ID UniqueId ServerUrl].each { |f| xml.FieldRef("Name" => f) }
         end
         get_list_items(view_fields, query_options, query) do |attributes|
-          construct_item(folder, attributes, nil)
+          yield construct_item(folder, attributes, nil)
         end
       else
         begin
           get_list_items("<ViewFields></ViewFields>", query_options, query) do |attributes|
-            construct_item(folder, attributes, attributes)
+            yield construct_item(folder, attributes, attributes)
           end
         rescue Savon::SOAPFault => e
           # This is where it gets ugly... Apparently there is a limit to the number of columns
@@ -128,11 +128,11 @@ module ActiveSP
                 end
                 parts << by_id
               end
-              parts[0].map do |id, attrs|
+              parts[0].each do |id, attrs|
                 parts[1..-1].each do |part|
                   attrs.merge!(part[id])
                 end
-                construct_item(folder, attrs, attrs)
+                yield construct_item(folder, attrs, attrs)
               end
             rescue Savon::SOAPFault => e
               if e.message[/lookup column threshold/]
@@ -378,7 +378,7 @@ module ActiveSP
     
     def get_list_items(view_fields, query_options, query)
       result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options }.merge(query))
-      result.xpath("//z:row", NS).map do |row|
+      result.xpath("//z:row", NS).each do |row|
         yield clean_item_attributes(row.attributes)
       end
     end

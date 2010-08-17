@@ -38,37 +38,31 @@ module ActiveSP
       end
       
       def each(&blk)
-        elements.each(&blk)
+        @element_getter.call(blk)
       end
       
       def first
-        elements.first
+        each { |element| return element }
+        nil
       end
       
       def last
-        elements.last
+        inject { |_, element| element }
       end
       
-      def reload
-        @elements = nil
-      end
-      
-    private
-      
-      def elements
-        @elements ||= @element_getter.call
+      def count
+        inject(0) { |cnt, _| cnt + 1 }
       end
       
     end
     
   private
     
-    def association(name, &blk)
+    def association(name, each_method = ("each_" + name.to_s.sub(/s\z/, "")).to_sym, &blk)
       proxy = Class.new(AssociationProxy, &blk)
-      old_method = instance_method(name)
       define_method(name) do |*a|
-        proxy.new(self) do
-          old_method.bind(self).call(*a)
+        proxy.new(self) do |blk|
+          send(each_method, *a, &blk)
         end
       end
     end
