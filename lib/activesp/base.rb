@@ -91,7 +91,7 @@ module ActiveSP
     end
     
     # Provides convenient getters and setters for attributes. Note that no name mangling
-    # is done, so an attribute such a Title is accessed as obj.Title. The main rationale
+    # is done, so an attribute such as Title is accessed as obj.Title. The main rationale
     # behind this is that name mangling is usually not lossless (e.g., both <tt>Title</tt>
     # and <tt>title</tt> could map to the more Rubyish <tt>title</tt>) and imperfect.
     def method_missing(m, *a, &b)

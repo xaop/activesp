@@ -154,7 +154,7 @@ module ActiveSP
       end
     end
     
-    # Returns the item with the given name or nil if there is no item with tha given name
+    # Returns the item with the given name or nil if there is no item with the given name
     # @return [Item]
     def item(name)
       query = Builder::XmlMarkup.new.Query do |xml|
