@@ -45,14 +45,26 @@ module ActiveSP
       @attributes_before_type_cast = attributes_before_type_cast if attributes_before_type_cast
     end
     
-    # Returns the folder, if any, that this item is located in. NOT FULLY IMPLEMENTED YET
+    # Returns the folder, if any, that this item is located in.
     # @return [Folder, nil]
     def folder
-      raise ImplementationError, "finding the folder of an item is not supported yet"
+      query = Builder::XmlMarkup.new.Query do |xml|
+        xml.Where do |xml|
+          xml.Eq do |xml|
+            xml.FieldRef(:Name => "FileRef")
+            xml.Value(::File.dirname(url), :Type => "String")
+          end
+          xml.Eq do |xml|
+            xml.FieldRef(:Name => "FSObjType")
+            xml.Value(1, :Type => "Integer")
+          end
+        end
+      end
+      @list.items(:folder => :all, :query => query).first
     end
     cache :folder
     
-    # Returns the parent of this item. NOT FULLY IMPLEMENTED YET
+    # Returns the parent of this item.
     # @return [Folder, List]
     def parent
       folder || @list
@@ -72,7 +84,8 @@ module ActiveSP
     # The URL of this item
     # @return [String]
     def url
-      URL(@list.url).join(attributes["ServerUrl"]).to_s
+      # URL(@list.url).join(attributes["ServerUrl"]).to_s
+      attributes["ServerUrl"]
     end
     cache :url
     
