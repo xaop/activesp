@@ -258,10 +258,10 @@ module ActiveSP
     end
     cache :original_attributes
     
-    def current_attributes_before_type_cast
-      untype_cast_attributes(@site, @list, @list.fields_by_name, current_attributes)
-    end
-    
+    # def current_attributes_before_type_cast
+    #   untype_cast_attributes(@site, @list, @list.fields_by_name, current_attributes)
+    # end
+    # 
     def internal_attribute_types
       list.fields_by_name
     end

@@ -229,10 +229,10 @@ module ActiveSP
     end
     cache :original_attributes
     
-    def current_attributes_before_type_cast
-      untype_cast_attributes(self, nil, internal_attribute_types, current_attributes)
-    end
-    
+    # def current_attributes_before_type_cast
+    #   untype_cast_attributes(self, nil, internal_attribute_types, current_attributes)
+    # end
+    # 
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true),

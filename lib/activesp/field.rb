@@ -107,10 +107,10 @@ module ActiveSP
       @original_attributes ||= type_cast_attributes(@site, nil, internal_attribute_types, @attributes_before_type_cast.merge("List" => list_for_lookup, "Type" => self.Type, "internal_type" => internal_type))
     end
     
-    def current_attributes_before_type_cast
-      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
-    end
-    
+    # def current_attributes_before_type_cast
+    #   untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
+    # end
+    # 
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowDeletion" => GhostField.new("AllowDeletion", "Bool", false, true),

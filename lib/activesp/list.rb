@@ -219,7 +219,7 @@ module ActiveSP
     cache :fields, :dup => :always
     
     def fields_by_name
-      fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
+      fields.inject({}) { |h, f| h[decode_field_name(f.attributes["StaticName"])] = f ; h }
     end
     cache :fields_by_name, :dup => :always
     
@@ -297,10 +297,10 @@ module ActiveSP
     end
     cache :original_attributes
     
-    def current_attributes_before_type_cast
-      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
-    end
-    
+    # def current_attributes_before_type_cast
+    #   untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
+    # end
+    # 
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true),

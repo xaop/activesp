@@ -79,10 +79,10 @@ module ActiveSP
     end
     cache :original_attributes
     
-    def current_attributes_before_type_cast
-      untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
-    end
-    
+    # def current_attributes_before_type_cast
+    #   untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
+    # end
+    # 
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "Email" => GhostField.new("Email", "Text", false, true),

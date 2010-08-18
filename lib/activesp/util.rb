@@ -30,6 +30,10 @@ module ActiveSP
     
   private
     
+    def decode_field_name(name)
+      name.gsub(/_x([0-9af]{4})_/i) { [$1.to_i(16)].pack("U") }
+    end
+    
     def clean_attributes(attributes)
       attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
     end
@@ -40,6 +44,7 @@ module ActiveSP
     
     def type_cast_attributes(site, list, fields, attributes)
       result = attributes.inject({}) do |h, (k, v)|
+        k = decode_field_name(k)
         if field = fields[k]
           case field.internal_type
           when "ListReference"

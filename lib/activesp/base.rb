@@ -83,7 +83,7 @@ module ActiveSP
     # @param [String] name The name of the attribute
     # @param [Integer, Float, String, Time, Boolean, Base] value The value to assign
     # @return [Integer, Float, String, Time, Boolean, Base] The assigned value
-    # @raise [ArgumentError] Raised when this object does not have an attribute by the given name of if the attribute by the given name is read-only
+    # @raise [ArgumentError] Raised when this object does not have an attribute by the given name or if the attribute by the given name is read-only
     def set_attribute(name, value)
       has_attribute?(name) and field = attribute_type(name) and internal_attribute_types[name] or raise ArgumentError, "#{self} has no field by the name #{name}"
       !field.ReadOnly or raise ArgumentError, "field #{name} of #{self} is read-only"
