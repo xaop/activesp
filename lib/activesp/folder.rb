@@ -33,6 +33,10 @@ module ActiveSP
       encode_key("F", [@list.key, @id])
     end
     
+    def is_folder?
+      false
+    end
+    
     # Returns the list of items in this folder
     # @param [Hash] options See {List#items}, :folder option has no effect
     # @return [Array<Item>]
@@ -56,6 +60,8 @@ module ActiveSP
     end
     
     alias / item
+    
+    undef content
     
     # @private
     def to_s

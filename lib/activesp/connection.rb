@@ -100,7 +100,7 @@ module ActiveSP
     # Fetches the content at the given URL using the login and password with which this
     # connection was constructed, if any. Always uses the GET method. Supports only
     # HTTP as protocol at the time of writing. This is useful for fetching content files
-    # form the server.
+    # from the server.
     # @param [String] url The URL to fetch
     # @return [String] The content fetched from the URL
     def fetch(url)
@@ -113,7 +113,10 @@ module ActiveSP
         request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
         request.ntlm_auth(@login, @password) if @login
         response = http.request(request)
-        response
+        # if Net::HTTPFound === response
+        #   response = fetch(response["location"])
+        # end
+        # response
       end
     end
     

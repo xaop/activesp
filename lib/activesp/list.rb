@@ -171,14 +171,9 @@ module ActiveSP
     alias / item
     
     def create_item(parameters = {})
-      case attributes["BaseType"]
-      when "0", "5" # List
-        create_list_item(parameters)
-      when "1" # Document library
-        create_document(parameters)
-      else
-        raise "not yet BaseType = #{attributes["BaseType"].inspect}"
-      end
+      when_list { return create_list_item(parameters) }
+      when_document_library { return create_document(parameters) }
+      raise_on_unknown_type
     end
     
     def changes_since_token(token, options = {})
@@ -263,6 +258,22 @@ module ActiveSP
     
     # @private
     alias inspect to_s
+    
+    # @private
+    def when_document_library
+      yield if %w[1].include?(attributes["BaseType"])
+    end
+    
+    # @private
+    def when_list
+      yield if %w[0 5].include?(attributes["BaseType"])
+    end
+    
+    # @private
+    def raise_on_unknown_type
+      base_type = attributes["BaseType"]
+      raise "not yet BaseType = #{base_type.inspect}" unless %w[0 1 5].include?(base_type)
+    end
     
   private
     

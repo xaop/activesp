@@ -45,6 +45,10 @@ module ActiveSP
       @attributes_before_type_cast = attributes_before_type_cast if attributes_before_type_cast
     end
     
+    def is_folder?
+      false
+    end
+    
     # Returns the folder, if any, that this item is located in.
     # @return [Folder, nil]
     def folder
@@ -89,6 +93,11 @@ module ActiveSP
     end
     cache :url
     
+    def absolute_url
+      URL(@list.url).join(attributes["ServerUrl"]).to_s
+    end
+    cache :absolute_url
+    
     # See {Base#key}
     # @return [String]
     def key
@@ -99,15 +108,12 @@ module ActiveSP
     # library, this returns an empty list
     # @return [Array<String>]
     def attachment_urls
-      case @list.attributes["BaseType"]
-      when "0", "5"
+      @list.when_list do
         result = call("Lists", "get_attachment_collection", "listName" => @list.id, "listItemID" => @id)
-        result.xpath("//sp:Attachment", NS).map { |att| att.text }
-      when "1"
-        raise TypeError, "a document library does not support attachments"
-      else
-        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
+        return result.xpath("//sp:Attachment", NS).map { |att| att.text }
       end
+      @list.when_document_library { raise TypeError, "a document library does not support attachments" }
+      @list.raise_on_unknown_type
     end
     cache :attachment_urls, :dup => :always
     
@@ -116,22 +122,20 @@ module ActiveSP
     end
     
     def add_attachment(parameters = {})
-      case @list.attributes["BaseType"]
-      when "0", "5"
+      @list.when_list do
         content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
         file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
         result = call("Lists", "add_attachment", "listName" => @list.ID, "listItemID" => self.ID, "fileName" => file_name, "attachment" => Base64.encode64(content.to_s))
         add_result = result.xpath("//sp:AddAttachmentResult", NS).first
         if add_result
-          ActiveSP::File.new(@site.connection, add_result.text, true)
+          clear_cache_for(:attachment_urls)
+          return ActiveSP::File.new(self, add_result.text, true)
         else
           raise "cannot add attachment"
         end
-      when "1"
-        raise TypeError, "a document library does not support attachments"
-      else
-        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
       end
+      @list.when_document_library { raise TypeError, "a document library does not support attachments" }
+      @list.raise_on_unknown_type
     end
     
     association :attachments do
@@ -141,14 +145,9 @@ module ActiveSP
     end
     
     def content
-      case @list.attributes["BaseType"]
-      when "0", "5"
-        raise TypeError, "a list has attachments"
-      when "1"
-        ActiveSP::File.new(@site.connection, url, false)
-      else
-        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
-      end
+      @list.when_list { raise TypeError, "a list has attachments" }
+      @list.when_document_library { return ActiveSP::File.new(self, url, false) }
+      @list.raise_on_unknown_type
     end
     
     # Returns a list of the content URLs for this item. For items in document libraries, this
@@ -156,14 +155,9 @@ module ActiveSP
     # to download all contents. See {Connection#fetch}
     # @return [Array<String>]
     def content_urls
-      case @list.attributes["BaseType"]
-      when "0", "5"
-        attachment_urls
-      when "1"
-        [url]
-      else
-        raise "not yet BaseType = #{@list.attributes["BaseType"].inspect}"
-      end
+      @list.when_list { return attachment_urls }
+      @list.when_document_library { return is_folder? ? [] : [url] }
+      @list.raise_on_unknown_type
     end
     cache :content_urls, :dup => :always
     
@@ -184,13 +178,32 @@ module ActiveSP
       update_attributes(untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes))
     end
     
-    # @private
-    def to_s
-      "#<ActiveSP::Item url=#{url}>"
+    def check_out
+      @list.when_list { raise TypeError, "cannot check out list items; they would disappear" }
+      result = call("Lists", "check_out_file", "pageUrl" => absolute_url, "checkoutToLocal" => false)
+      checkout_result = result.xpath("//sp:CheckOutFileResult", NS).first.text
+      if checkout_result == "true"
+        self
+      else
+        raise "cannot check out this item"
+      end
     end
     
-    # @private
-    alias inspect to_s
+    def check_in(type)
+      @list.when_list { raise TypeError, "cannot check in list items because you can't check them out" }
+      
+    end
+    
+    def cancel_checkout
+      @list.when_list { raise TypeError, "cannot undo check-out for list items because you can't check them out" }
+      result = call("Lists", "undo_check_out", "pageUrl" => absolute_url)
+      cancel_result = result.xpath("//sp:UndoCheckOutResult", NS).first.text
+      if cancel_result == "true"
+        self
+      else
+        raise "cannot cancel check-out for this item"
+      end
+    end
     
     def update_attributes(attributes)
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
@@ -228,6 +241,14 @@ module ActiveSP
       end
       self
     end
+    
+    # @private
+    def to_s
+      "#<ActiveSP::Item url=#{url}>"
+    end
+    
+    # @private
+    alias inspect to_s
     
   private
     
