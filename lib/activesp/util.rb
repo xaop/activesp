@@ -142,9 +142,25 @@ module ActiveSP
         @site.rootsite.user(value) and value or raise ArgumentError, "user with login #{value} does not exist for #{field.Name} attribute"
       when "Lookup"
         if field.List
-          raise "not yet #{field.inspect}"
+          if ::ActiveSP::Item === value && value.list == field.List
+            value
+          else
+            raise ArgumentError, "wrong type for #{field.Name} attribute"
+          end
         else
           value.to_s
+        end
+      when "LookupMulti"
+        if field.List
+          value.map do |val|
+            if ::ActiveSP::Item === val && val.list == field.List
+              val
+            else
+              raise ArgumentError, "wrong type for #{field.Name} attribute"
+            end
+          end
+        else
+          raise ArgumentError, "wrong type for #{field.Name} attribute"
         end
       when "DateTime"
         Time === value and value or raise ArgumentError, "wrong type for #{field.Name} attribute"
@@ -191,6 +207,10 @@ module ActiveSP
             v = v.ID
           when "UserMulti"
             v = v.map { |ug| ug.ID }.join(";#;#")
+          when "Lookup"
+            v = v.ID
+          when "LookupMulti"
+            v = v.map { |i| i.ID }.join(";#;#")
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end
