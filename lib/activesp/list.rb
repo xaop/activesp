@@ -103,48 +103,8 @@ module ActiveSP
           yield construct_item(folder, attributes, nil)
         end
       else
-        begin
-          get_list_items("<ViewFields></ViewFields>", query_options, query) do |attributes|
-            yield construct_item(folder, attributes, attributes)
-          end
-        rescue Savon::SOAPFault => e
-          # This is where it gets ugly... Apparently there is a limit to the number of columns
-          # you can retrieve with this operation. Joy!
-          if e.message[/lookup column threshold/]
-            fields = self.fields.map { |f| f.Name }
-            split_factor = 2
-            begin
-              split_size = (fields.length + split_factor - 1) / split_factor
-              parts = []
-              split_factor.times do |i|
-                lo = i * split_size
-                hi = [(i + 1) * split_size, fields.length].min - 1
-                view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
-                  fields[lo..hi].each { |f| xml.FieldRef("Name" => f) }
-                end
-                by_id = {}
-                get_list_items(view_fields, query_options, query) do |attributes|
-                  by_id[attributes["ID"]] = attributes
-                end
-                parts << by_id
-              end
-              parts[0].each do |id, attrs|
-                parts[1..-1].each do |part|
-                  attrs.merge!(part[id])
-                end
-                yield construct_item(folder, attrs, attrs)
-              end
-            rescue Savon::SOAPFault => e
-              if e.message[/lookup column threshold/]
-                split_factor += 1
-                retry
-              else
-                raise
-              end
-            end
-          else
-            raise
-          end
+        __each_item(query_options, query) do |attributes|
+          yield construct_item(folder, attributes, attributes)
         end
       end
     end
@@ -273,6 +233,51 @@ module ActiveSP
     def raise_on_unknown_type
       base_type = attributes["BaseType"]
       raise "not yet BaseType = #{base_type.inspect}" unless %w[0 1 5].include?(base_type)
+    end
+    
+    # @private
+    def __each_item(query_options, query)
+      get_list_items("<ViewFields></ViewFields>", query_options, query) do |attributes|
+        yield attributes
+      end
+    rescue Savon::SOAPFault => e
+      # This is where it gets ugly... Apparently there is a limit to the number of columns
+      # you can retrieve with this operation. Joy!
+      if e.message[/lookup column threshold/]
+        fields = self.fields.map { |f| f.Name }
+        split_factor = 2
+        begin
+          split_size = (fields.length + split_factor - 1) / split_factor
+          parts = []
+          split_factor.times do |i|
+            lo = i * split_size
+            hi = [(i + 1) * split_size, fields.length].min - 1
+            view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
+              fields[lo..hi].each { |f| xml.FieldRef("Name" => f) }
+            end
+            by_id = {}
+            get_list_items(view_fields, query_options, query) do |attributes|
+              by_id[attributes["ID"]] = attributes
+            end
+            parts << by_id
+          end
+          parts[0].each do |id, attrs|
+            parts[1..-1].each do |part|
+              attrs.merge!(part[id])
+            end
+            yield attrs
+          end
+        rescue Savon::SOAPFault => e
+          if e.message[/lookup column threshold/]
+            split_factor += 1
+            retry
+          else
+            raise
+          end
+        end
+      else
+        raise
+      end
     end
     
   private

@@ -70,12 +70,12 @@ module ActiveSP
           
           when "User"
             d = split_multi(v)
-            v = User.new(site.connection.root, d[2][/\\/] ? d[2] : "SHAREPOINT\\system")
+            v = create_user_or_group(site, d[2])
           when "InternalUser"
-            v = User.new(site.connection.root, v[/\\/] ? v : "SHAREPOINT\\system")
+            v = create_user_or_group(site, v)
           when "UserMulti"
             d = split_multi(v)
-            v = (0...(d.length / 4)).map { |i| User.new(site.connection.root, d[4 * i + 2][/\\/] ? d[4 * i + 2] : "SHAREPOINT\\system") }
+            v = (0...(d.length / 4)).map { |i| create_user_or_group(site, d[4 * i + 2]) }
           
           when "Choice"
             # For some reason there is no encoding here
@@ -115,6 +115,16 @@ module ActiveSP
         result[k] = nil unless result.has_key?(k)
       end
       result
+    end
+    
+    def create_user_or_group(site, entry)
+      if entry == "System Account"
+        User.new(site.connection.root, "SHAREPOINT\\system")
+      elsif entry[/\\/]
+        User.new(site.connection.root, entry)
+      else
+        Group.new(site.connection.root, entry)
+      end
     end
     
     def type_check_attribute(field, value)

@@ -259,7 +259,7 @@ module ActiveSP
     
   private
     
-    def data
+    def raw_attributes
       query_options = Builder::XmlMarkup.new.QueryOptions do |xml|
         xml.Folder
       end
@@ -271,13 +271,14 @@ module ActiveSP
           end
         end
       end
-      result = call("Lists", "get_list_items", "listName" => @list.id, "viewFields" => "<ViewFields></ViewFields>", "queryOptions" => query_options, "query" => query)
-      result.xpath("//z:row", NS).first
+      @list.__each_item(query_options, "query" => query) do |attributes|
+        return attributes
+      end
     end
-    cache :data
+    cache :raw_attributes
     
     def attributes_before_type_cast
-      clean_item_attributes(data.attributes)
+      clean_item_attributes(raw_attributes)
     end
     cache :attributes_before_type_cast
     
