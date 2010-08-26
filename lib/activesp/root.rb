@@ -59,7 +59,7 @@ module ActiveSP
     def user(login)
       if user = users_by_login[login]
         user
-      elsif data = call("UserGroup", "get_user_info", "userLoginName" => login).xpath("//spdir:User", NS).first
+      elsif data = root.send(:call, "UserGroup", "get_user_info", "userLoginName" => login).xpath("//spdir:User", NS).first
         users_by_login[login] = User.new(root, login, clean_attributes(data))
       end
     end
@@ -73,6 +73,12 @@ module ActiveSP
       end
     end
     cache :groups, :dup => :always
+    
+    def group(name)
+      if group = groups_by_name[name]
+        group
+      end
+    end
     
     # Returns the list of roles in the system
     # @return [Array<Role>]
@@ -90,6 +96,11 @@ module ActiveSP
       users.inject({}) { |h, u| h[u.login_name] = u ; h }
     end
     cache :users_by_login
+    
+    def groups_by_name
+      groups.inject({}) { |h, g| h[g.Name] = g ; h }
+    end
+    cache :groups_by_name
     
   end
   
