@@ -118,9 +118,9 @@ module ActiveSP
   private
     
     def current_attributes
-      original_attributes
+      original_attributes.inject({}) { |h, (k, v)| h[k] = ::Array === v ? v.dup.freeze : v ; h }
     end
-    cache :current_attributes, :dup => :once
+    cache :current_attributes
     
     def changed_attributes
       before = original_attributes
