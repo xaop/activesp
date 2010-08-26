@@ -173,13 +173,15 @@ module ActiveSP
     # end
     
     # See {Base#save}
-    # @return [void]
+    # @return [self]
     def save
-      update_attributes(untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes))
+      update_attributes_internal(untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes))
+      self
     end
     
     def check_out
       @list.when_list { raise TypeError, "cannot check out list items; they would disappear" }
+      @list.raise_on_unknown_type
       result = call("Lists", "check_out_file", "pageUrl" => absolute_url, "checkoutToLocal" => false)
       checkout_result = result.xpath("//sp:CheckOutFileResult", NS).first.text
       if checkout_result == "true"
@@ -189,13 +191,31 @@ module ActiveSP
       end
     end
     
-    def check_in(type)
+    def check_in(options = {})
+      type = options.delete(:type) or raise ArgumentError, ":type parameter not specified"
+      comment = options.delete(:comment)
+      options.empty? or raise ArgumentError, "unsupported options #{options.keys.map { |k| k.inspect }.join(", ")}"
       @list.when_list { raise TypeError, "cannot check in list items because you can't check them out" }
-      
+      @list.raise_on_unknown_type
+      if checkin_type = { :minor => 0, :major => 1, :overwrite => 2 }[type]
+        if type == :minor && !@list.attribute("EnableMinorVersion")
+          raise TypeError, "this list does not support minor versions"
+        end
+        result = call("Lists", "check_in_file", "pageUrl" => absolute_url, "comment" => comment, "CheckinType" => checkin_type)
+        checkin_result = result.xpath("//sp:CheckInFileResult", NS).first.text
+        if checkin_result == "true"
+          self
+        else
+          raise "cannot check in this item"
+        end
+      else
+        raise ArgumentError, "invalid checkin type #{type.inspect}, valid values are :minor, :major and :overwrite"
+      end
     end
     
     def cancel_checkout
       @list.when_list { raise TypeError, "cannot undo check-out for list items because you can't check them out" }
+      @list.raise_on_unknown_type
       result = call("Lists", "undo_check_out", "pageUrl" => absolute_url)
       cancel_result = result.xpath("//sp:UndoCheckOutResult", NS).first.text
       if cancel_result == "true"
@@ -206,23 +226,10 @@ module ActiveSP
     end
     
     def update_attributes(attributes)
-      updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
-        xml.Method("ID" => 1, "Cmd" => "Update") do
-          xml.Field(self.ID, "Name" => "ID")
-          construct_xml_for_update_list_items(xml, @site, @list, @list.fields_by_name, attributes)
-        end
+      attributes.each do |k, v|
+        set_attribute(k, v)
       end
-      result = call("Lists", "update_list_items", "listName" => @list.id, "updates" => updates)
-      create_result = result.xpath("//sp:Result", NS).first
-      error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
-      if error_code == 0
-        row = result.xpath("//z:row", NS).first
-        @attributes_before_type_cast = clean_item_attributes(row.attributes)
-        reload
-      else
-        raise "cannot create item, error code = #{error_code}"
-      end
-      self
+      save
     end
     
     def destroy
@@ -279,12 +286,31 @@ module ActiveSP
     end
     cache :original_attributes
     
-    # def current_attributes_before_type_cast
-    #   untype_cast_attributes(@site, @list, @list.fields_by_name, current_attributes)
-    # end
-    # 
     def internal_attribute_types
       list.fields_by_name
+    end
+    
+    def update_attributes_internal(attributes)
+      if file_leaf_ref = attributes.delete("FileLeafRef")
+        base_name = ::File.basename(file_leaf_ref, ".*")
+      end
+      updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
+        xml.Method("ID" => 1, "Cmd" => "Update") do
+          xml.Field(self.ID, "Name" => "ID")
+          construct_xml_for_update_list_items(xml, @list.fields_by_name, attributes)
+          xml.Field(base_name, "Name" => "BaseName") if base_name
+        end
+      end
+      result = call("Lists", "update_list_items", "listName" => @list.id, "updates" => updates)
+      create_result = result.xpath("//sp:Result", NS).first
+      error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
+      if error_code == 0
+        row = result.xpath("//z:row", NS).first
+        @attributes_before_type_cast = clean_item_attributes(row.attributes)
+        reload
+      else
+        raise "cannot create item, error code = #{error_code}"
+      end
     end
     
   end

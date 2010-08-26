@@ -119,9 +119,9 @@ module ActiveSP
     
     def type_check_attribute(field, value)
       case field.internal_type
-      when "Text"
+      when "Text", "File"
         value.to_s
-      when "Bool"
+      when "Bool", "Boolean"
         !!value
       when "Integer"
         Integer(value)
@@ -130,8 +130,16 @@ module ActiveSP
       when "InternalUser"
         value = value.to_s
         @site.rootsite.user(value) and value or raise ArgumentError, "user with login #{value} does not exist for #{field.Name} attribute"
+      when "Lookup"
+        if field.List
+          raise "not yet #{field.inspect}"
+        else
+          value.to_s
+        end
+      when "DateTime"
+        Time === value and value or raise ArgumentError, "wrong type for #{field.Name} attribute"
       else
-        raise "not yet #{field.inspect}"
+        raise "not yet #{field.Name}:#{field.internal_type}"
       end
     end
     
@@ -139,11 +147,15 @@ module ActiveSP
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
           case field.internal_type
-          when "Text"
+          when "Text", "File"
           when "Bool"
             v = v ? "TRUE" : "FALSE"
+          when "Boolean"
+            v = v ? "1" : "0"
           when "Integer"
             v = v.to_s
+          when "DateTime"
+            v = v.strftime("%Y-%m-%d %H:%M:%S")
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end
@@ -155,9 +167,8 @@ module ActiveSP
       end
     end
     
-    def construct_xml_for_copy_into_items(site, list, fields, attributes)
-      raw_attributes = untype_cast_attributes(site, list, fields, attributes)
-      raw_attributes.map do |k, v|
+    def construct_xml_for_copy_into_items(fields, attributes)
+      attributes.map do |k, v|
         field = fields[k]
         Builder::XmlMarkup.new.wsdl(
           :FieldInformation,
@@ -170,9 +181,8 @@ module ActiveSP
       end.join("")
     end
     
-    def construct_xml_for_update_list_items(xml, site, list, fields, attributes)
-      raw_attributes = untype_cast_attributes(site, list, fields, attributes)
-      raw_attributes.map do |k, v|
+    def construct_xml_for_update_list_items(xml, fields, attributes)
+      attributes.map do |k, v|
         field = fields[k]
         xml.Field(v, "Name" => field.StaticName)
       end
@@ -239,33 +249,3 @@ module ActiveSP
   end
   
 end
-
-
-__END__
-
-escaping in field names:
-
-_x[4-digit code]_
-
-[space]      20
-<            3C
->            3E
-#            23
-%            25
-{            7B
-}            7D
-|            7C
-\            5C
-^            5E
-~            7E
-[            5B
-]            5D
-`            60
-;            3B
-/            2F
-?            3F
-:            3A
-@            40
-=            3D
-&            26
-$            24

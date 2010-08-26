@@ -308,10 +308,6 @@ module ActiveSP
     end
     cache :original_attributes
     
-    # def current_attributes_before_type_cast
-    #   untype_cast_attributes(@site, nil, internal_attribute_types, current_attributes)
-    # end
-    # 
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true),
@@ -407,10 +403,11 @@ module ActiveSP
     
     def create_document(parameters)
       content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
-      file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
+      file_name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the file name in the 'FileLeafRef' parameter"
       raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name)
       destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(url, file_name)))
-      fields = construct_xml_for_copy_into_items(@site, self, fields_by_name, parameters)
+      attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
+      fields = construct_xml_for_copy_into_items(fields_by_name, attributes)
       source_url = escape_xml(file_name)
       result = call("Copy", "copy_into_items", "DestinationUrls" => destination_urls, "Stream" => Base64.encode64(content.to_s), "SourceUrl" => source_url, "Fields" => fields)
       copy_result = result.xpath("//sp:CopyResult", NS).first
@@ -423,10 +420,11 @@ module ActiveSP
     end
     
     def create_list_item(parameters)
+      attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
         xml.Method("ID" => 1, "Cmd" => "New") do
           xml.Field("New", "Name" => "ID")
-          construct_xml_for_update_list_items(xml, @site, self, fields_by_name, parameters)
+          construct_xml_for_update_list_items(xml, fields_by_name, attributes)
         end
       end
       result = call("Lists", "update_list_items", "listName" => self.id, "updates" => updates)
