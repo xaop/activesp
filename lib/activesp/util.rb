@@ -155,6 +155,20 @@ module ActiveSP
         else
           raise ArgumentError, "wrong type for #{field.Name} attribute"
         end
+      when "UserMulti"
+        begin
+          value = Array(value)
+        rescue Exception
+          raise ArgumentError, "wrong type for #{field.Name} attribute"
+        end
+        value.map do |val|
+          if ::ActiveSP::User === val || field.attributes["UserSelectionMode"] == "PeopleAndGroups" && ::ActiveSP::Group === val
+            # TODO: check if the user is in the correct group in case a group is specified
+            val
+          else
+            raise ArgumentError, "wrong type for #{field.Name} attribute"
+          end
+        end
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
@@ -174,11 +188,9 @@ module ActiveSP
           when "DateTime"
             v = v.strftime("%Y-%m-%d %H:%M:%S")
           when "User"
-            if ::ActiveSP::User === v
-              v = v.ID
-            else
-              v = v.ID
-            end
+            v = v.ID
+          when "UserMulti"
+            v = v.map { |ug| ug.ID }.join(";#;#")
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end
