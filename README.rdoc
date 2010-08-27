@@ -1,4 +1,4 @@
-= ActiveSP Release 0.0.1 "Space Oddity" (Apr 9th 2010)
+= ActiveSP Release 0.0.3 "Under Pressure" (Aug 27th 2010)
 
 == What?
 
@@ -63,13 +63,26 @@ The examples directory contains this example plus a few others. We will add more
 We support read access to sites (webs), lists, items, documents, folders, content type,
 columns (fields), content, users, groups, roles.
 
-We do not yet support life cycles, versions, write support.
+We support write access to list items (including documents).
+
+We do not yet support life cycles, versions, full write support.
 
 == Compatibility
 
 We have tested ActiveSP with SharePoint 2007 and SharePoint 2010. ActiveSP has been tested
 on Mac OS X with Ruby 1.8.6, but we do not see any reason why it would not work on Linux
 or Windows, or with other Ruby implementations.
+
+As of release 0.0.3, we have not tested extensively on SharePoint 2007 so we can't guarantee
+compatibility.
+
+== Changelog
+
+=== ActiveSP Release 0.0.3 "Under Pressure" (Aug 27th 2010)
+
+=== ActiveSP Release 0.0.1 "Space Oddity" (Apr 9th 2010)
+
+Initial release
 
 == License
 

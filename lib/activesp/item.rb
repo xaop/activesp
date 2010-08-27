@@ -121,6 +121,8 @@ module ActiveSP
     end
     cache :attachment_urls, :dup => :always
     
+    # Yields each attachment as a ActiveSP::File object.
+    # 
     def each_attachment
       attachment_urls.each { |url| yield ActiveSP::File.new(self, url, true) }
     end
