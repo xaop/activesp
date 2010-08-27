@@ -152,6 +152,11 @@ module ActiveSP
         end
       when "LookupMulti"
         if field.List
+          begin
+            value = Array(value)
+          rescue Exception
+            raise ArgumentError, "wrong type for #{field.Name} attribute"
+          end
           value.map do |val|
             if ::ActiveSP::Item === val && val.list == field.List
               val
@@ -187,6 +192,22 @@ module ActiveSP
         end
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
+      end
+    end
+    
+    def type_check_attributes_for_creation(fields, attributes)
+      p attributes
+      attributes.inject({}) do |h, (k, v)|
+        if field = fields[k]
+          if !field.ReadOnly
+            h[k] = type_check_attribute(field, v)
+            h
+          else
+            raise ArgumentError, "field #{field.Name} is read-only"
+          end
+        else
+          raise "can't find field #{k.inspect}"
+        end
       end
     end
     

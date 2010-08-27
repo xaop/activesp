@@ -280,6 +280,10 @@ module ActiveSP
       end
     end
     
+    def ==(object)
+      ::ActiveSP::List === object && self.ID == object.ID
+    end
+    
   private
     
     def data1
@@ -411,6 +415,7 @@ module ActiveSP
       file_name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the file name in the 'FileLeafRef' parameter"
       raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name)
       destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(url, file_name)))
+      parameters = type_check_attributes_for_creation(fields_by_name, parameters)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
       fields = construct_xml_for_copy_into_items(fields_by_name, attributes)
       source_url = escape_xml(file_name)
@@ -425,6 +430,7 @@ module ActiveSP
     end
     
     def create_list_item(parameters)
+      parameters = type_check_attributes_for_creation(fields_by_name, parameters)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
         xml.Method("ID" => 1, "Cmd" => "New") do

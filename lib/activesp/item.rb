@@ -45,6 +45,10 @@ module ActiveSP
       @attributes_before_type_cast = attributes_before_type_cast if attributes_before_type_cast
     end
     
+    def ID
+      @id
+    end
+    
     def is_folder?
       false
     end
@@ -256,6 +260,10 @@ module ActiveSP
     
     # @private
     alias inspect to_s
+    
+    def ==(object)
+      ::ActiveSP::List === object && self.ID == object.ID
+    end
     
   private
     
