@@ -65,7 +65,7 @@ module ActiveSP
           when "Bool"
             v = !!v[/true/i]
           when "File"
-            # v = v.sub(/\A.*?;#/, "")
+            v = v.sub(/\A\d+;#/, "")
           when "Note"
           
           when "User"

@@ -157,6 +157,12 @@ module ActiveSP
       @list.raise_on_unknown_type
     end
     
+    def content=(data)
+      @list.when_list { raise TypeError, "a list has attachments" }
+      @list.when_document_library { @list.create_document(:overwrite => true, :content => data, "FileLeafRef" => original_attributes["FileLeafRef"]) }
+      @list.raise_on_unknown_type
+    end
+    
     # Returns a list of the content URLs for this item. For items in document libraries, this
     # returns the url, for other items this returns the attachments. These URLs can be used
     # to download all contents. See {Connection#fetch}

@@ -452,9 +452,10 @@ module ActiveSP
       parameters = parameters.dup
       content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
       folder = parameters.delete(:folder)
+      overwrite = parameters.delete(:overwrite)
       file_name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the file name in the 'FileLeafRef' parameter"
-      raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name)
-      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(folder, file_name)))
+      raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name) && !overwrite
+      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(folder || url, file_name)))
       parameters = type_check_attributes_for_creation(fields_by_name, parameters)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
       fields = construct_xml_for_copy_into_items(fields_by_name, attributes)
@@ -480,7 +481,6 @@ module ActiveSP
           xml.Field("New", "Name" => "ID")
           construct_xml_for_update_list_items(xml, fields_by_name, attributes)
           if folder_name
-            p ::File.join(folder || url, folder_name)
             xml.Field(::File.join(folder || url, folder_name), "Name" => "FileRef")
             xml.Field(1, "Name" => "FSObjType")
           else
