@@ -196,7 +196,6 @@ module ActiveSP
     end
     
     def type_check_attributes_for_creation(fields, attributes)
-      p attributes
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
           if !field.ReadOnly

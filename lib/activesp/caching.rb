@@ -31,6 +31,7 @@ module ActiveSP
   private
     
     def cache(name, options = {})
+      options = options.dup
       duplicate = options.delete(:dup)
       options.empty? or raise ArgumentError, "unsupported options #{options.keys.map { |k| k.inspect }.join(", ")}"
       (@cached_methods ||= []) << name

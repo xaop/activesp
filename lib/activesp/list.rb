@@ -79,14 +79,15 @@ module ActiveSP
     end
     cache :Title
     
-    # Returns the items in this list according to th given options. Note that this method does not
+    # Yields the items in this list according to the given options. Note that this method does not
     # recurse into folders. I believe specifying a folder of '' actually does recurse
     # @param [Hash] options Options
     # @option options [Folder, :all] :folder (nil) The folder to search in
     # @option options [String] :query (nil) The query to execute as an XML fragment
     # @option options [Boolean] :no_preload (nil) If set to true, the attributes are not preloaded. Can be more efficient if you only need the list of items and not their attributes
-    # @return [Array<Item>]
+    # @yieldparam [Item] item
     def each_item(options = {})
+      options = options.dup
       folder = options.delete(:folder)
       query = options.delete(:query)
       query = query ? { "query" => query } : {}
@@ -108,9 +109,39 @@ module ActiveSP
         end
       end
     end
-    association :items do
+    association :items
+    
+    def each_document(parameters = {}, &blk)
+      query = Builder::XmlMarkup.new.Query do |xml|
+        xml.Where do |xml|
+          xml.Neq do |xml|
+            xml.FieldRef(:Name => "FSObjType")
+            xml.Value(1, :Type => "Text")
+          end
+        end
+      end
+      each_item(parameters.merge(:query => query), &blk)
+    end
+    association :documents do
       def create(parameters = {})
-        @object.create_item(parameters)
+        @object.create_document(parameters)
+      end
+    end
+    
+    def each_folder(parameters = {}, &blk)
+      query = Builder::XmlMarkup.new.Query do |xml|
+        xml.Where do |xml|
+          xml.Eq do |xml|
+            xml.FieldRef(:Name => "FSObjType")
+            xml.Value(1, :Type => "Text")
+          end
+        end
+      end
+      each_item(parameters.merge(:query => query), &blk)
+    end
+    association :folders do
+      def create(parameters = {})
+        @object.create_folder(parameters)
       end
     end
     
@@ -121,7 +152,7 @@ module ActiveSP
         xml.Where do |xml|
           xml.Eq do |xml|
             xml.FieldRef(:Name => "FileLeafRef")
-            xml.Value(name, :Type => "String")
+            xml.Value(name, :Type => "Text")
           end
         end
       end
@@ -130,13 +161,20 @@ module ActiveSP
     
     alias / item
     
-    def create_item(parameters = {})
+    def create_document(parameters = {})
       when_list { return create_list_item(parameters) }
-      when_document_library { return create_document(parameters) }
+      when_document_library { return create_library_document(parameters) }
       raise_on_unknown_type
     end
     
+    def create_folder(parameters = {})
+      name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the folder name in the 'FileLeafRef' parameter"
+      
+      create_list_item(parameters.merge(:folder_name => name))
+    end
+    
     def changes_since_token(token, options = {})
+      options = options.dup
       no_preload = options.delete(:no_preload)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       
@@ -410,11 +448,13 @@ module ActiveSP
       )
     end
     
-    def create_document(parameters)
+    def create_library_document(parameters)
+      parameters = parameters.dup
       content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
+      folder = parameters.delete(:folder)
       file_name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the file name in the 'FileLeafRef' parameter"
       raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name)
-      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(url, file_name)))
+      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(folder, file_name)))
       parameters = type_check_attributes_for_creation(fields_by_name, parameters)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
       fields = construct_xml_for_copy_into_items(fields_by_name, attributes)
@@ -430,22 +470,32 @@ module ActiveSP
     end
     
     def create_list_item(parameters)
+      parameters = parameters.dup
+      folder = parameters.delete(:folder)
+      folder_name = parameters.delete(:folder_name)
       parameters = type_check_attributes_for_creation(fields_by_name, parameters)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
         xml.Method("ID" => 1, "Cmd" => "New") do
           xml.Field("New", "Name" => "ID")
           construct_xml_for_update_list_items(xml, fields_by_name, attributes)
+          if folder_name
+            p ::File.join(folder || url, folder_name)
+            xml.Field(::File.join(folder || url, folder_name), "Name" => "FileRef")
+            xml.Field(1, "Name" => "FSObjType")
+          else
+            xml.Field(::File.join(folder, Time.now.strftime("%Y%m%d%H%M%S-#{rand(16**3).to_s(16)}")), "Name" => "FileRef") if folder
+          end
         end
       end
       result = call("Lists", "update_list_items", "listName" => self.id, "updates" => updates)
       create_result = result.xpath("//sp:Result", NS).first
-      error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
-      if error_code == 0
+      error_text = create_result.xpath("./sp:ErrorText", NS).first
+      if !error_text
         row = result.xpath("//z:row", NS).first
         construct_item(nil, clean_item_attributes(row.attributes), nil)
       else
-        raise "cannot create item, error code = #{error_code}"
+        raise "cannot create item: #{error_text.text.to_s}"
       end
     end
     

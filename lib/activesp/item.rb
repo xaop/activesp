@@ -60,11 +60,11 @@ module ActiveSP
         xml.Where do |xml|
           xml.Eq do |xml|
             xml.FieldRef(:Name => "FileRef")
-            xml.Value(::File.dirname(url), :Type => "String")
+            xml.Value(::File.dirname(url), :Type => "Text")
           end
           xml.Eq do |xml|
             xml.FieldRef(:Name => "FSObjType")
-            xml.Value(1, :Type => "Integer")
+            xml.Value(1, :Type => "Text")
           end
         end
       end
@@ -129,6 +129,7 @@ module ActiveSP
     
     def add_attachment(parameters = {})
       @list.when_list do
+        parameters = parameters.dup
         content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
         file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
         result = call("Lists", "add_attachment", "listName" => @list.ID, "listItemID" => self.ID, "fileName" => file_name, "attachment" => Base64.encode64(content.to_s))
@@ -198,6 +199,7 @@ module ActiveSP
     end
     
     def check_in(options = {})
+      options = options.dup
       type = options.delete(:type) or raise ArgumentError, ":type parameter not specified"
       comment = options.delete(:comment)
       options.empty? or raise ArgumentError, "unsupported options #{options.keys.map { |k| k.inspect }.join(", ")}"
@@ -302,6 +304,7 @@ module ActiveSP
     end
     
     def update_attributes_internal(attributes)
+      attributes = attributes.dup
       if file_leaf_ref = attributes.delete("FileLeafRef")
         base_name = ::File.basename(file_leaf_ref, ".*")
       end

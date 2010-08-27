@@ -50,6 +50,7 @@ module ActiveSP
     # @option options [String] :login (nil) The login
     # @option options [String] :password (nil) The password associated with the given login. Is mandatory if the login is specified. Also can't be "password" as that is inherently insafe. We don't explicitly check for this, but it can't be that.
     def initialize(options = {})
+      options = options.dup
       @root_url = options.delete(:root) or raise ArgumentError, "missing :root option"
       @login = options.delete(:login)
       @password = options.delete(:password)

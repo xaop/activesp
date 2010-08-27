@@ -38,10 +38,37 @@ module ActiveSP
     end
     
     # Returns the list of items in this folder
-    # @param [Hash] options See {List#items}, :folder option has no effect
+    # @param [Hash] options See {List#each_item}, :folder option has no effect
     # @return [Array<Item>]
-    def items(options = {})
-      @list.items(options.merge(:folder => self))
+    def each_item(options = {}, &blk)
+      @list.each_item(options.merge(:folder => self), &blk)
+    end
+    association :items
+    
+    def each_folder(options = {}, &blk)
+      @list.each_folder(options.merge(:folder => self), &blk)
+    end
+    association :folders do
+      def create(parameters = {})
+        @object.create_folder(parameters)
+      end
+    end
+    
+    def create_folder(parameters = {})
+      @list.create_folder(parameters.merge(:folder => absolute_url))
+    end
+    
+    def each_document(options = {}, &blk)
+      @list.each_document(options.merge(:folder => self), &blk)
+    end
+    association :documents do
+      def create(parameters = {})
+        @object.create_document(parameters)
+      end
+    end
+    
+    def create_document(parameters = {})
+      @list.create_document(parameters.merge(:folder => absolute_url))
     end
     
     # Returns the item with the given name
@@ -52,7 +79,7 @@ module ActiveSP
         xml.Where do |xml|
           xml.Eq do |xml|
             xml.FieldRef(:Name => "FileLeafRef")
-            xml.Value(name, :Type => "String")
+            xml.Value(name, :Type => "Text")
           end
         end
       end
