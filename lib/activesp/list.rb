@@ -89,8 +89,9 @@ module ActiveSP
     def each_item(options = {})
       options = options.dup
       folder = options.delete(:folder)
-      query = options.delete(:query)
-      query = query ? { "query" => query } : {}
+      # Always include a query because for some reason SP is capable of not finding certain
+      # items otherwise.
+      query = { "query" => options.delete(:query) || "<Query><Where></Where></Query>" }
       no_preload = options.delete(:no_preload)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       query_options = Builder::XmlMarkup.new.QueryOptions do |xml|
