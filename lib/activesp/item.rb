@@ -60,7 +60,7 @@ module ActiveSP
         xml.Where do |xml|
           xml.Eq do |xml|
             xml.FieldRef(:Name => "FileRef")
-            xml.Value(::File.dirname(url), :Type => "Text")
+            xml.Value(::File.dirname(url).sub(/\A\//, ""), :Type => "Text")
           end
           xml.Eq do |xml|
             xml.FieldRef(:Name => "FSObjType")
