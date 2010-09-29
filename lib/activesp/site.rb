@@ -186,6 +186,13 @@ module ActiveSP
       p untype_cast_attributes(self, nil, internal_attribute_types, changed_attributes)
     end
     
+    def accessible?
+      data
+      true
+    rescue Savon::HTTPError
+      false
+    end
+    
     # @private
     def to_s
       "#<ActiveSP::Site url=#{@url}>"
@@ -210,17 +217,25 @@ module ActiveSP
     end
     
     def data
+      # Looks like you can't call this as a non-admin. To investigate further
       call("SiteData", "get_web")
+    rescue Savon::HTTPError
+      # This can fail when you don't have access to this site
+      call("Webs", "get_web", "webUrl" => ".")
     end
     cache :data
     
     def attributes_before_type_cast
-      element = data.xpath("//sp:sWebMetadata", NS).first
-      result = {}
-      element.children.each do |ch|
-        result[ch.name] = ch.inner_text
+      if element = data.xpath("//sp:sWebMetadata", NS).first
+        result = {}
+        element.children.each do |ch|
+          result[ch.name] = ch.inner_text
+        end
+        result
+      else
+        element = data.xpath("//sp:Web", NS).first
+        clean_attributes(element.attributes)
       end
-      result
     end
     cache :attributes_before_type_cast
     
@@ -263,7 +278,7 @@ module ActiveSP
       
       def initialize(site, name)
         @site, @name = site, name
-        @client = Savon::Client.new(::File.join(site.url, "_vti_bin", name + ".asmx?WSDL"))
+        @client = Savon::Client.new(::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL"))
         @client.request.ntlm_auth(site.connection.login, site.connection.password) if site.connection.login
       end
       
