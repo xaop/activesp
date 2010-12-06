@@ -44,21 +44,24 @@ module ActiveSP
     def initialize(site, id, title = nil, attributes_before_type_cast1 = nil, attributes_before_type_cast2 = nil)
       @site, @id = site, id
       @Title = title if title
-      @attributes_before_type_cast1 = attributes_before_type_cast1 if attributes_before_type_cast1
-      @attributes_before_type_cast2 = attributes_before_type_cast2 if attributes_before_type_cast2
+      # This testing for emptiness of RootFolder is necessary because it is empty
+      # in bulk calls.
+      @attributes_before_type_cast1 = attributes_before_type_cast1 if attributes_before_type_cast1 && attributes_before_type_cast1["RootFolder"] != ""
+      @attributes_before_type_cast2 = attributes_before_type_cast2 if attributes_before_type_cast2 && attributes_before_type_cast2["RootFolder"] != ""
     end
     
     # The URL of the list
     # @return [String]
     def url
-      # Dirty. Used to use RootFolder, but if you get the data from the bulk calls, RootFolder is the empty
-      # string rather than what it should be. That's what you get with web services as an afterthought I guess.
-      view_url = ::File.dirname(attributes["DefaultViewUrl"])
-      result = URL(@site.url).join(view_url).to_s
-      if ::File.basename(result) == "Forms" and dir = ::File.dirname(result) and dir.length > @site.url.length
-        result = dir
-      end
-      result
+      URL(@site.url).join(attributes["RootFolder"]).to_s
+      # # Dirty. Used to use RootFolder, but if you get the data from the bulk calls, RootFolder is the empty
+      # # string rather than what it should be. That's what you get with web services as an afterthought I guess.
+      # view_url = ::File.dirname(attributes["DefaultViewUrl"])
+      # result = URL(@site.url).join(view_url).to_s
+      # if ::File.basename(result) == "Forms" and dir = ::File.dirname(result) and dir.length > @site.url.length
+      #   result = dir
+      # end
+      # result
     end
     cache :url
     

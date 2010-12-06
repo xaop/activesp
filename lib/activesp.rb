@@ -34,6 +34,8 @@ require 'activesp/caching'
 require 'activesp/associations'
 require 'activesp/persistent_caching'
 
+require 'activesp/errors'
+
 require 'activesp/base'
 
 require 'activesp/connection'

@@ -293,6 +293,12 @@ module ActiveSP
           end
           yield soap if block_given?
         end
+      rescue Savon::SOAPFault => e
+        if e.error_code == 0x80004005
+          raise AccessDenied, "access denied"
+        else
+          raise e
+        end
       ensure
         t2 = Time.now
         puts "SP - time: %.3fs, site: %s, service: %s, method: %s, body: %s" % [t2 - t1, @site.url, @name, m, body.inspect] if @site.connection.trace
