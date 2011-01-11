@@ -43,10 +43,11 @@ module ActiveSP
     
     # @private
     # TODO: create profile
-    attr_reader :login, :password, :root_url, :trace
+    attr_reader :login, :password, :auth_type, :root_url, :trace
     
     # @param [Hash] options The connection options
     # @option options [String] :root The URL of the root site
+    # @option options [String] :auth_type (:ntlm) The authentication type, can be :basic or :ntlm.
     # @option options [String] :login (nil) The login
     # @option options [String] :password (nil) The password associated with the given login. Is mandatory if the login is specified. Also can't be "password" as that is inherently insafe. We don't explicitly check for this, but it can't be that.
     def initialize(options = {})
@@ -54,6 +55,7 @@ module ActiveSP
       @root_url = options.delete(:root) or raise ArgumentError, "missing :root option"
       @login = options.delete(:login)
       @password = options.delete(:password)
+      @auth_type = options.delete(:auth_type) || :ntlm
       @trace = options.delete(:trace)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       cache = nil
@@ -112,7 +114,16 @@ module ActiveSP
       end
       Net::HTTP.start(*@open_params) do |http|
         request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
-        request.ntlm_auth(@login, @password) if @login
+        if @login
+          case auth_type
+          when :ntlm
+            request.ntlm_auth(@login, @password)
+          when :basic
+            request.basic_auth(@login, @password)
+          else
+            raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+          end
+        end
         response = http.request(request)
         # if Net::HTTPFound === response
         #   response = fetch(response["location"])

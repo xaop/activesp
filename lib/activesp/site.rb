@@ -279,7 +279,16 @@ module ActiveSP
       def initialize(site, name)
         @site, @name = site, name
         @client = Savon::Client.new(::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL"))
-        @client.request.ntlm_auth(site.connection.login, site.connection.password) if site.connection.login
+        if site.connection.login
+          case site.connection.auth_type
+          when :ntlm
+            @client.request.ntlm_auth(site.connection.login, site.connection.password)
+          when :basic
+            @client.request.basic_auth(site.connection.login, site.connection.password)
+          else
+            raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
+          end
+        end
       end
       
       def call(m, *args)
