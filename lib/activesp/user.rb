@@ -83,9 +83,9 @@ module ActiveSP
       @@internal_attribute_types ||= {
         "Email" => GhostField.new("Email", "Text", false, true),
         "ID" => GhostField.new("ID", "Text", false, true),
-        "IsDomainGroup" => GhostField.new("Email", "Bool", false, true),
-        "IsSiteAdmin" => GhostField.new("IsSiteAdmin", "Bool", false, true),
-        "LoginName" => GhostField.new("LoginName", "Text", false, true),
+        "IsDomainGroup" => GhostField.new("Email", "Bool", false, true, "Is Domain Group?"),
+        "IsSiteAdmin" => GhostField.new("IsSiteAdmin", "Bool", false, true, "Is Site Admin?"),
+        "LoginName" => GhostField.new("LoginName", "Text", false, true, "Login Name"),
         "Name" => GhostField.new("Name", "Text", false, true),
         "Notes" => GhostField.new("Notes", "Text", false, true),
         "Sid" => GhostField.new("Sid", "Text", false, true)

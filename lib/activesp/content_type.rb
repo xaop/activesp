@@ -130,12 +130,12 @@ module ActiveSP
     
     def internal_attribute_types
       @@internal_attribute_types ||= {
-        "Description" => GhostField.new("ColName", "Text", false, true),
-        "FeatureId" => GhostField.new("ColName", "Text", false, true),
-        "Group" => GhostField.new("ColName", "Text", false, true),
+        "Description" => GhostField.new("Description", "Text", false, true),
+        "FeatureId" => GhostField.new("FeatureId", "Text", false, true),
+        "Group" => GhostField.new("Group", "Text", false, true),
         "Hidden" => GhostField.new("Hidden", "Bool", false, true),
-        "ID" => GhostField.new("ColName", "Text", false, true),
-        "Name" => GhostField.new("ColName", "Text", false, true),
+        "ID" => GhostField.new("ID", "Text", false, true),
+        "Name" => GhostField.new("Name", "Text", false, true),
         "ReadOnly" => GhostField.new("ReadOnly", "Bool", false, true),
         "Sealed" => GhostField.new("Sealed", "Bool", false, true),
         "V2ListTemplateName" => GhostField.new("V2ListTemplateName", "Text", false, true),

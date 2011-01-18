@@ -35,11 +35,11 @@ module ActiveSP
     include Util
     
     # @private
-    attr_reader :Name, :internal_type, :Mult, :ReadOnly
+    attr_reader :Name, :internal_type, :Mult, :ReadOnly, :DisplayName
     
     # @private
-    def initialize(name, type, mult, read_only)
-      @Name, @internal_type, @Mult, @ReadOnly = name, type, mult, read_only
+    def initialize(name, type, mult, read_only, display_name = name)
+      @Name, @DisplayName, @internal_type, @Mult, @ReadOnly = name, display_name, type, mult, read_only
     end
     
     # @private
@@ -86,7 +86,7 @@ module ActiveSP
     def original_attributes
       @original_attributes ||= {
         "ColName" => @Name,
-        "DisplayName" => @Name,
+        "DisplayName" => @DisplayName,
         "Mult" => @Mult,
         "Name" => @Name,
         "ReadOnly" => @ReadOnly,

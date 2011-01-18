@@ -246,21 +246,21 @@ module ActiveSP
     
     def internal_attribute_types
       @@internal_attribute_types ||= {
-        "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true),
-        "AnonymousViewListItems" => GhostField.new("AnonymousViewListItems", "Bool", false, true),
+        "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true, "Allow Anonymous Access?"),
+        "AnonymousViewListItems" => GhostField.new("AnonymousViewListItems", "Bool", false, true, "Anonymous Can View List Items?"),
         "Author" => GhostField.new("Author", "InternalUser", false, true),
         "Description" => GhostField.new("Description", "Text", false, true),
-        "ExternalSecurity" => GhostField.new("ExternalSecurity", "Bool", false, true),
-        "InheritedSecurity" => GhostField.new("InheritedSecurity", "Bool", false, true),
-        "IsBucketWeb" => GhostField.new("IsBucketWeb", "Bool", false, true),
+        "ExternalSecurity" => GhostField.new("ExternalSecurity", "Bool", false, true, "Has External Security?"),
+        "InheritedSecurity" => GhostField.new("InheritedSecurity", "Bool", false, true, "Has Inherited Security?"),
+        "IsBucketWeb" => GhostField.new("IsBucketWeb", "Bool", false, true, "Is Bucket Web?"),
         "Language" => GhostField.new("Language", "Integer", false, true),
-        "LastModified" => GhostField.new("LastModified", "XMLDateTime", false, true),
-        "LastModifiedForceRecrawl" => GhostField.new("LastModifiedForceRecrawl", "XMLDateTime", false, true),
+        "LastModified" => GhostField.new("LastModified", "XMLDateTime", false, true, "Modified"),
+        "LastModifiedForceRecrawl" => GhostField.new("LastModifiedForceRecrawl", "XMLDateTime", false, true, "Last Modified Force Recrawl"),
         "Permissions" => GhostField.new("Permissions", "Text", false, true),
         "Title" => GhostField.new("Title", "Text", false, true),
-        "UsedInAutocat" => GhostField.new("UsedInAutocat", "Bool", false, true),
-        "ValidSecurityInfo" => GhostField.new("ValidSecurityInfo", "Bool", false, true),
-        "WebID" => GhostField.new("WebID", "Text", false, true)
+        "UsedInAutocat" => GhostField.new("UsedInAutocat", "Bool", false, true, "Used in Autocat?"),
+        "ValidSecurityInfo" => GhostField.new("ValidSecurityInfo", "Bool", false, true, "Has Valid Security Info?"),
+        "WebID" => GhostField.new("WebID", "Text", false, true, "Web ID")
       }
     end
     

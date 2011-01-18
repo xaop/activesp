@@ -53,7 +53,11 @@ module ActiveSP
           when "DateTime"
             v = Time.parse(v)
           when "XMLDateTime"
-            v = Time.xmlschema(v.sub(/ /, "T"))
+            if v == "0001-01-01T00:00:00"
+              v = nil
+            else
+              v = Time.xmlschema(v.sub(/ /, "T"))
+            end
           when "Computed", "Text", "Guid", "ContentTypeId", "URL"
           when "Integer", "Counter", "Attachments"
             v = v && v != "" ? Integer(v) : nil
@@ -72,7 +76,7 @@ module ActiveSP
             d = split_multi(v)
             v = create_user_or_group(site, d[2])
           when "InternalUser"
-            v = create_user_or_group(site, v)
+            v = create_user_or_group_by_name(site, v)
           when "UserMulti"
             d = split_multi(v)
             v = (0...(d.length / 4)).map { |i| create_user_or_group(site, d[4 * i + 2]) }
@@ -118,12 +122,18 @@ module ActiveSP
     end
     
     def create_user_or_group(site, entry)
-      if entry == "System Account"
-        User.new(site.connection.root, "SHAREPOINT\\system")
-      elsif entry[/\\/]
+      if entry[/\\/]
         User.new(site.connection.root, entry)
       else
         Group.new(site.connection.root, entry)
+      end
+    end
+    
+    def create_user_or_group_by_name(site, name)
+      if user = site.connection.users.find { |u| u.attribute("Name") === name }
+        User.new(site.connection.root, user.attribute("LoginName"))
+      elsif group = site.connection.groups.select { |g| g.attribute("Name") === name }
+        Group.new(site.connection.root, name)
       end
     end
     

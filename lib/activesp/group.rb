@@ -97,8 +97,8 @@ module ActiveSP
         "Description" => GhostField.new("Description", "Text", false, true),
         "ID" => GhostField.new("ID", "Text", false, true),
         "Name" => GhostField.new("Name", "Text", false, true),
-        "OwnerID" => GhostField.new("OsnerID", "Integer", false, true),
-        "OwnerIsUser" => GhostField.new("OwnerIsUser", "Bool", false, true)
+        "OwnerID" => GhostField.new("OwnerID", "Integer", false, true, "Owner ID"),
+        "OwnerIsUser" => GhostField.new("OwnerIsUser", "Bool", false, true, "Owner Is User?")
       }
     end
     
