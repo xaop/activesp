@@ -258,7 +258,9 @@ module ActiveSP
       if error_code == 0
         @ID = nil
       else
-        raise "cannot create item, error code = #{error_code}"
+        message = create_result.xpath("./sp:ErrorText", NS).first
+        message &&= message.text
+        raise "cannot destroy item, error code = #{error_code}, error description = #{message}"
       end
       self
     end
@@ -329,7 +331,9 @@ module ActiveSP
         @attributes_before_type_cast = clean_item_attributes(row.attributes)
         reload
       else
-        raise "cannot create item, error code = #{error_code}"
+        message = create_result.xpath("./sp:ErrorText", NS).first
+        message &&= message.text
+        raise "cannot update item, error code = #{error_code}, error description = #{message}"
       end
     end
     

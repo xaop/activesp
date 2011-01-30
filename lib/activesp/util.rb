@@ -74,7 +74,7 @@ module ActiveSP
           
           when "User"
             d = split_multi(v)
-            v = create_user_or_group(site, d[2])
+            v = create_user_or_group_by_name(site, d[2])
           when "InternalUser"
             v = create_user_or_group_by_name(site, v)
           when "UserMulti"
@@ -130,10 +130,22 @@ module ActiveSP
     end
     
     def create_user_or_group_by_name(site, name)
-      if user = site.connection.users.find { |u| u.attribute("Name") === name }
+      if /\A\d+\z/ === name
+        create_user_or_group_by_id(site, name)
+      else
+        if user = site.connection.users.find { |u| u.attribute("Name") === name }
+          User.new(site.connection.root, user.attribute("LoginName"))
+        elsif group = site.connection.groups.find { |g| g.attribute("Name") === name }
+          Group.new(site.connection.root, name)
+        end
+      end
+    end
+    
+    def create_user_or_group_by_id(site, id)
+      if user = site.connection.users.find { |u| u.attribute("ID") === id }
         User.new(site.connection.root, user.attribute("LoginName"))
-      elsif group = site.connection.groups.select { |g| g.attribute("Name") === name }
-        Group.new(site.connection.root, name)
+      elsif group = site.connection.groups.find { |g| g.attribute("ID") === id }
+        Group.new(site.connection.root, group.attribute("Name"))
       end
     end
     
@@ -144,7 +156,9 @@ module ActiveSP
       when "Bool", "Boolean"
         !!value
       when "Integer"
-        Integer(value)
+        Integer(value) if value
+      when "Number"
+        Float(value) if value
       when "StandardDateTime", "XMLDateTime"
         Time === value and value or raise ArgumentError, "wrong type for #{field.Name} attribute"
       when "InternalUser"
@@ -183,6 +197,8 @@ module ActiveSP
         if ::ActiveSP::User === value || field.attributes["UserSelectionMode"] == "PeopleAndGroups" && ::ActiveSP::Group === value
           # TODO: check if the user is in the correct group in case a group is specified
           value
+        elsif value == nil && !field.attributes["Required"]
+          nil
         else
           raise ArgumentError, "wrong type for #{field.Name} attribute"
         end
@@ -231,14 +247,16 @@ module ActiveSP
             v = v ? "1" : "0"
           when "Integer"
             v = v.to_s
+          when "Number"
+            v = v.to_s
           when "DateTime"
             v = v.strftime("%Y-%m-%d %H:%M:%S")
           when "User"
-            v = v.ID
+            v = v.ID if v
           when "UserMulti"
             v = v.map { |ug| ug.ID }.join(";#;#")
           when "Lookup"
-            v = v.ID
+            v = v.ID if v
           when "LookupMulti"
             v = v.map { |i| i.ID }.join(";#;#")
           else
