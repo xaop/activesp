@@ -98,6 +98,11 @@ module ActiveSP
     end
     cache :fields, :dup => :always
     
+    def fields_by_name
+      fields.inject({}) { |h, f| h[decode_field_name(f.StaticName)] = f ; h }
+    end
+    cache :fields_by_name, :dup => :always
+    
     # See {Base#save}
     # @return [void]
     def save

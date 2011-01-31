@@ -35,7 +35,7 @@ module ActiveSP
     include Util
     
     # @private
-    attr_reader :Name, :internal_type, :Mult, :ReadOnly, :DisplayName
+    attr_reader :Name, :internal_type, :Mult, :ReadOnly, :DisplayName, :Required
     
     # @private
     def initialize(name, type, mult, read_only, display_name = name)

@@ -308,24 +308,28 @@ module ActiveSP
     cache :original_attributes
     
     def internal_attribute_types
-      list.fields_by_name
+      # list.fields_by_name
+      content_type.fields_by_name
     end
+    cache :internal_attribute_types
     
     def update_attributes_internal(attributes)
       attributes = attributes.dup
       if file_leaf_ref = attributes.delete("FileLeafRef")
         base_name = ::File.basename(file_leaf_ref, ".*")
       end
-      updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
+      updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => @list.attribute("Version")) do |xml|
         xml.Method("ID" => 1, "Cmd" => "Update") do
           xml.Field(self.ID, "Name" => "ID")
           construct_xml_for_update_list_items(xml, @list.fields_by_name, attributes)
           xml.Field(base_name, "Name" => "BaseName") if base_name
+          xml.Field(URI.escape(original_attributes["ServerFileRef"]), "Name" => "FileRef")
         end
       end
       result = call("Lists", "update_list_items", "listName" => @list.id, "updates" => updates)
       create_result = result.xpath("//sp:Result", NS).first
       error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
+      puts updates
       if error_code == 0
         row = result.xpath("//z:row", NS).first
         @attributes_before_type_cast = clean_item_attributes(row.attributes)

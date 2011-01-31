@@ -151,7 +151,7 @@ module ActiveSP
     
     def type_check_attribute(field, value)
       case field.internal_type
-      when "Text", "File"
+      when "Text", "File", "Note", "URL", "Choice"
         value.to_s
       when "Bool", "Boolean"
         !!value
@@ -216,6 +216,8 @@ module ActiveSP
             raise ArgumentError, "wrong type for #{field.Name} attribute"
           end
         end
+      when "ContentTypeId"
+        value
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
@@ -224,7 +226,7 @@ module ActiveSP
     def type_check_attributes_for_creation(fields, attributes)
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
-          if !field.ReadOnly
+          if !field.ReadOnly || field.Name == "ContentType"
             h[k] = type_check_attribute(field, v)
             h
           else
@@ -240,7 +242,7 @@ module ActiveSP
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
           case field.internal_type
-          when "Text", "File"
+          when "Text", "File", "Note", "URL", "Choice"
           when "Bool"
             v = v ? "TRUE" : "FALSE"
           when "Boolean"
@@ -259,6 +261,7 @@ module ActiveSP
             v = v.ID if v
           when "LookupMulti"
             v = v.map { |i| i.ID }.join(";#;#")
+          when "ContentTypeId"
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end
