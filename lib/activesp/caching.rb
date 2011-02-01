@@ -28,6 +28,20 @@ module ActiveSP
   # @private
   module Caching
     
+    module InstanceMethods
+      
+      # @private
+      def clear_cache_for(name)
+        instance_variable_set("@#{name}", nil) # Make sure it is defined first... Dirty, right?
+        remove_instance_variable("@#{name}")
+      end
+      
+    end
+    
+    def self.extended(o)
+      o.send(:include, ActiveSP::Caching::InstanceMethods)
+    end
+    
   private
     
     def cache(name, options = {})
