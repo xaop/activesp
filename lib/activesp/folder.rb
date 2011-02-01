@@ -34,7 +34,7 @@ module ActiveSP
     end
     
     def is_folder?
-      false
+      true
     end
     
     # Returns the list of items in this folder

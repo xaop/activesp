@@ -318,7 +318,7 @@ module ActiveSP
       if file_leaf_ref = attributes.delete("FileLeafRef")
         base_name = ::File.basename(file_leaf_ref, ".*")
         type = ::File.extname(file_leaf_ref).sub(/\A\./, "")
-        if type != original_attributes["File Type"]
+        if type != original_attributes["File Type"].to_s
           raise ArgumentError, "Cannot change file type of a document"
         end
         file_ref = URI.unescape(original_attributes["EncodedAbsUrl"])
@@ -331,6 +331,7 @@ module ActiveSP
             xml.Field(base_name, "Name" => "BaseName")
             xml.Field(file_ref, "Name" => "FileRef") 
           end
+          xml.Field("1", "Name" => "FSObjType") if is_folder?
         end
       end
       result = call("Lists", "update_list_items", "listName" => @list.id, "updates" => updates)
