@@ -153,6 +153,10 @@ module ActiveSP
     # Returns the item with the given name or nil if there is no item with the given name
     # @return [Item]
     def item(name)
+      __item(name)
+    end
+    
+    def __item(name, options = {})
       query = Builder::XmlMarkup.new.Query do |xml|
         xml.Where do |xml|
           xml.Eq do |xml|
@@ -161,7 +165,7 @@ module ActiveSP
           end
         end
       end
-      items(:query => query).first
+      items(options.merge(:query => query)).first
     end
     
     alias / item
@@ -457,9 +461,10 @@ module ActiveSP
       parameters = parameters.dup
       content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
       folder = parameters.delete(:folder)
+      folder_object = parameters.delete(:folder_object)
       overwrite = parameters.delete(:overwrite)
       file_name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the file name in the 'FileLeafRef' parameter"
-      raise ArgumentError, "document with file name #{file_name.inspect} already exists" if item(file_name) && !overwrite
+      raise ArgumentError, "document with file name #{file_name.inspect} already exists" if __item(file_name, :folder => folder_object) && !overwrite
       destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(folder || url, file_name)))
       parameters = type_check_attributes_for_creation(fields_by_name, parameters)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
@@ -471,13 +476,14 @@ module ActiveSP
       if error_code != "Success"
         raise "#{error_code} : #{copy_result["ErrorMessage"]}"
       else
-        item(file_name)
+        __item(file_name, :folder => folder_object)
       end
     end
     
     def create_list_item(parameters)
       parameters = parameters.dup
       folder = parameters.delete(:folder)
+      folder_object = parameters.delete(:folder_object)
       folder_name = parameters.delete(:folder_name)
       parameters = type_check_attributes_for_creation(fields_by_name, parameters)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)

@@ -68,7 +68,7 @@ module ActiveSP
     end
     
     def create_document(parameters = {})
-      @list.create_document(parameters.merge(:folder => absolute_url))
+      @list.create_document(parameters.merge(:folder => absolute_url, :folder_object => self))
     end
     
     # Returns the item with the given name
