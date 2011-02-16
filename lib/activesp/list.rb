@@ -194,7 +194,11 @@ module ActiveSP
       else
         view_fields = Builder::XmlMarkup.new.ViewFields
       end
-      result = call("Lists", "get_list_item_changes_since_token", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields)
+      if token
+        result = call("Lists", "get_list_item_changes_since_token", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields)
+      else
+        result = call("Lists", "get_list_item_changes_since_token", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'viewFields' => view_fields)
+      end
       updates = []
       result.xpath("//z:row", NS).each do |row|
         attributes = clean_item_attributes(row.attributes)
