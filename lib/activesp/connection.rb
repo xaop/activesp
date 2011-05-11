@@ -132,6 +132,32 @@ module ActiveSP
       end
     end
     
+    def head(url)
+      # TODO: support HTTPS too
+      @open_params ||= begin
+        u = URL(@root_url)
+        [u.host, u.port]
+      end
+      Net::HTTP.start(*@open_params) do |http|
+        request = Net::HTTP::Head.new(URL(url).full_path.gsub(/ /, "%20"))
+        if @login
+          case auth_type
+          when :ntlm
+            request.ntlm_auth(@login, @password)
+          when :basic
+            request.basic_auth(@login, @password)
+          else
+            raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+          end
+        end
+        response = http.request(request)
+        # if Net::HTTPFound === response
+        #   response = fetch(response["location"])
+        # end
+        # response
+      end
+    end
+    
   end
   
 end

@@ -44,6 +44,14 @@ module ActiveSP
       @item.list.site.connection.fetch(@url).body
     end
     
+    def content_type
+      head_data["content-type"]
+    end
+    
+    def content_size
+      head_data["content-length"].to_i
+    end
+    
     def destroy
       if @destroyable
         result = call("Lists", "delete_attachment", "listName" => @item.list.id, "listItemID" => @item.ID, "url" => @url)
@@ -65,6 +73,12 @@ module ActiveSP
     
     # @private
     alias inspect to_s
+    
+  private
+    
+    def head_data
+      @head_data ||= @item.list.site.connection.head(@url)
+    end
     
   end
   
