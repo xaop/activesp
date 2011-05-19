@@ -250,6 +250,10 @@ module ActiveSP
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
         xml.Method("ID" => 1, "Cmd" => "Delete") do
           xml.Field(self.ID, "Name" => "ID")
+          @list.when_document_library do
+            file_ref = URI.unescape(original_attributes["EncodedAbsUrl"])
+            xml.Field(file_ref, "Name" => "FileRef")
+          end
         end
       end
       result = call("Lists", "update_list_items", "listName" => @list.id, "updates" => updates)
