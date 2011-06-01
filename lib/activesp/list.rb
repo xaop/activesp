@@ -468,7 +468,10 @@ module ActiveSP
       folder_object = parameters.delete(:folder_object)
       overwrite = parameters.delete(:overwrite)
       file_name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the file name in the 'FileLeafRef' parameter"
-      raise ArgumentError, "document with file name #{file_name.inspect} already exists" if __item(file_name, :folder => folder_object) && !overwrite
+      if !overwrite
+        object = __item(file_name, :folder => folder_object)
+        raise ActiveSP::AlreadyExists.new("document with file name #{file_name.inspect} already exists") { object } if object
+      end
       destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(folder || url, file_name)))
       parameters = type_check_attributes_for_creation(fields_by_name, parameters)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
@@ -510,7 +513,15 @@ module ActiveSP
         row = result.xpath("//z:row", NS).first
         construct_item(nil, clean_item_attributes(row.attributes), nil)
       else
-        raise "cannot create item: #{error_text.text.to_s}"
+        error_code = create_result.xpath("./sp:ErrorCode", NS).first
+        error_code &&= error_code.text.to_s
+        if error_code == "0x8107090d"
+          raise ActiveSP::AlreadyExists.new(error_text.text.to_s) { item(folder_name) }
+        else
+          # Make it look like the error came from soap
+          # Alternatively we could wrap all the soap faults maybe
+          raise Savon::SOAPFault.new(error_text.text.to_s, error_code)
+        end
       end
     end
     
