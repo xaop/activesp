@@ -195,9 +195,9 @@ module ActiveSP
         view_fields = Builder::XmlMarkup.new.ViewFields
       end
       if token
-        result = call("Lists", "get_list_item_changes_since_token", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields)
+        result = call("Lists", "GetListItemChangesSinceToken", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields)
       else
-        result = call("Lists", "get_list_item_changes_since_token", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'viewFields' => view_fields)
+        result = call("Lists", "GetListItemChangesSinceToken", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'viewFields' => view_fields)
       end
       updates = []
       result.xpath("//z:row", NS).each do |row|
@@ -235,7 +235,7 @@ module ActiveSP
     end
     
     def content_types
-      result = call("Lists", "get_list_content_types", "listName" => @id)
+      result = call("Lists", "GetListContentTypes", "listName" => @id)
       result.xpath("//sp:ContentType", NS).map do |content_type|
         ContentType.new(@site, self, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
       end
@@ -291,10 +291,10 @@ module ActiveSP
       get_list_items("<ViewFields></ViewFields>", query_options, query) do |attributes|
         yield attributes
       end
-    rescue Savon::SOAPFault => e
+    rescue Savon::SOAP::Fault => e
       # This is where it gets ugly... Apparently there is a limit to the number of columns
       # you can retrieve with this operation. Joy!
-      if e.message[/lookup column threshold/]
+      if /lookup column threshold/ === e.error_string
         fields = self.fields.map { |f| f.Name }
         split_factor = 2
         begin
@@ -318,8 +318,8 @@ module ActiveSP
             end
             yield attrs
           end
-        rescue Savon::SOAPFault => e
-          if e.message[/lookup column threshold/]
+        rescue Savon::SOAP::Fault => e
+          if /lookup column threshold/ === e.error_string
             split_factor += 1
             retry
           else
@@ -338,7 +338,7 @@ module ActiveSP
   private
     
     def data1
-      call("Lists", "get_list", "listName" => @id).xpath("//sp:List", NS).first
+      call("Lists", "GetList", "listName" => @id).xpath("//sp:List", NS).first
     end
     cache :data1
     
@@ -348,7 +348,7 @@ module ActiveSP
     cache :attributes_before_type_cast1
     
     def data2
-      call("SiteData", "get_list", "strListName" => @id)
+      call("SiteData", "GetList", "strListName" => @id)
     end
     cache :data2
     
@@ -434,7 +434,7 @@ module ActiveSP
     end
     
     def permissions
-      result = call("Permissions", "get_permission_collection", "objectName" => @id, "objectType" => "List")
+      result = call("Permissions", "GetPermissionCollection", "objectName" => @id, "objectType" => "List")
       rootsite = @site.rootsite
       result.xpath("//spdir:Permission", NS).map do |row|
         accessor = row["MemberIsUser"][/true/i] ? User.new(rootsite, row["UserLogin"]) : Group.new(rootsite, row["GroupName"])
@@ -444,7 +444,7 @@ module ActiveSP
     cache :permissions, :dup => :always
     
     def get_list_items(view_fields, query_options, query)
-      result = call("Lists", "get_list_items", { "listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options }.merge(query))
+      result = call("Lists", "GetListItems", { "listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options }.merge(query))
       result.xpath("//z:row", NS).each do |row|
         yield clean_item_attributes(row.attributes)
       end
@@ -477,7 +477,7 @@ module ActiveSP
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
       fields = construct_xml_for_copy_into_items(fields_by_name, attributes)
       source_url = escape_xml(file_name)
-      result = call("Copy", "copy_into_items", "DestinationUrls" => destination_urls, "Stream" => Base64.encode64(content.to_s), "SourceUrl" => source_url, "Fields" => fields)
+      result = call("Copy", "CopyIntoItems", "DestinationUrls" => destination_urls, "Stream" => Base64.encode64(content.to_s), "SourceUrl" => source_url, "Fields" => fields)
       copy_result = result.xpath("//sp:CopyResult", NS).first
       error_code = copy_result["ErrorCode"]
       if error_code != "Success"
@@ -506,7 +506,7 @@ module ActiveSP
           end
         end
       end
-      result = call("Lists", "update_list_items", "listName" => self.id, "updates" => updates)
+      result = call("Lists", "UpdateListItems", "listName" => self.id, "updates" => updates)
       create_result = result.xpath("//sp:Result", NS).first
       error_text = create_result.xpath("./sp:ErrorText", NS).first
       if !error_text

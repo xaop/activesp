@@ -113,7 +113,7 @@ module ActiveSP
     # @return [Array<String>]
     def attachment_urls
       @list.when_list do
-        result = call("Lists", "get_attachment_collection", "listName" => @list.id, "listItemID" => @id)
+        result = call("Lists", "GetAttachmentCollection", "listName" => @list.id, "listItemID" => @id)
         return result.xpath("//sp:Attachment", NS).map { |att| att.text }
       end
       @list.when_document_library { raise TypeError, "a document library does not support attachments" }
@@ -132,7 +132,7 @@ module ActiveSP
         parameters = parameters.dup
         content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
         file_name = parameters.delete(:file_name) or raise ArgumentError, "Specify the file name in the :file_name parameter"
-        result = call("Lists", "add_attachment", "listName" => @list.ID, "listItemID" => self.ID, "fileName" => file_name, "attachment" => Base64.encode64(content.to_s))
+        result = call("Lists", "AddAttachment", "listName" => @list.ID, "listItemID" => self.ID, "fileName" => file_name, "attachment" => Base64.encode64(content.to_s))
         add_result = result.xpath("//sp:AddAttachmentResult", NS).first
         if add_result
           clear_cache_for(:attachment_urls)
@@ -182,7 +182,7 @@ module ActiveSP
     cache :content_type
     
     # def versions
-    #   call("Versions", "get_versions", "fileName" => attributes["ServerUrl"])
+    #   call("Versions", "GetVersions", "fileName" => attributes["ServerUrl"])
     # end
     
     # See {Base#save}
@@ -195,7 +195,7 @@ module ActiveSP
     def check_out
       @list.when_list { raise TypeError, "cannot check out list items; they would disappear" }
       @list.raise_on_unknown_type
-      result = call("Lists", "check_out_file", "pageUrl" => absolute_url, "checkoutToLocal" => false)
+      result = call("Lists", "CheckOutFile", "pageUrl" => absolute_url, "checkoutToLocal" => false)
       checkout_result = result.xpath("//sp:CheckOutFileResult", NS).first.text
       if checkout_result == "true"
         self
@@ -215,7 +215,7 @@ module ActiveSP
         if type == :minor && !@list.attribute("EnableMinorVersion")
           raise TypeError, "this list does not support minor versions"
         end
-        result = call("Lists", "check_in_file", "pageUrl" => absolute_url, "comment" => comment, "CheckinType" => checkin_type)
+        result = call("Lists", "CheckInFile", "pageUrl" => absolute_url, "comment" => comment, "CheckinType" => checkin_type)
         checkin_result = result.xpath("//sp:CheckInFileResult", NS).first.text
         if checkin_result == "true"
           self
@@ -230,7 +230,7 @@ module ActiveSP
     def cancel_checkout
       @list.when_list { raise TypeError, "cannot undo check-out for list items because you can't check them out" }
       @list.raise_on_unknown_type
-      result = call("Lists", "undo_check_out", "pageUrl" => absolute_url)
+      result = call("Lists", "UndoCheckOut", "pageUrl" => absolute_url)
       cancel_result = result.xpath("//sp:UndoCheckOutResult", NS).first.text
       if cancel_result == "true"
         self
@@ -256,7 +256,7 @@ module ActiveSP
           end
         end
       end
-      result = call("Lists", "update_list_items", "listName" => @list.id, "updates" => updates)
+      result = call("Lists", "UpdateListItems", "listName" => @list.id, "updates" => updates)
       create_result = result.xpath("//sp:Result", NS).first
       error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
       if error_code == 0
@@ -298,6 +298,7 @@ module ActiveSP
       @list.__each_item(query_options, "query" => query) do |attributes|
         return attributes
       end
+      raise ArgumentError, "Not found"
     end
     cache :raw_attributes
     
@@ -338,7 +339,7 @@ module ActiveSP
           xml.Field("1", "Name" => "FSObjType") if is_folder?
         end
       end
-      result = call("Lists", "update_list_items", "listName" => @list.id, "updates" => updates)
+      result = call("Lists", "UpdateListItems", "listName" => @list.id, "updates" => updates)
       create_result = result.xpath("//sp:Result", NS).first
       error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
       if error_code == 0
@@ -346,9 +347,15 @@ module ActiveSP
         @attributes_before_type_cast = clean_item_attributes(row.attributes)
         reload
       else
-        message = create_result.xpath("./sp:ErrorText", NS).first
-        message &&= message.text
-        raise "cannot update item, error code = #{error_code}, error description = #{message}"
+        if error_code == 0x80004005
+          raise ActiveSP::AccessDenied, "access denied"
+        elsif error_code == 0x80070005
+          raise ActiveSP::PermissionDenied, "permission denied"
+        else
+          message = create_result.xpath("./sp:ErrorText", NS).first
+          message &&= message.text
+          raise "cannot update item, error code = #{error_code}, error description = #{message}"
+        end
       end
     end
     

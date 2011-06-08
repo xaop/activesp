@@ -54,7 +54,7 @@ module ActiveSP
     
     def destroy
       if @destroyable
-        result = call("Lists", "delete_attachment", "listName" => @item.list.id, "listItemID" => @item.ID, "url" => @url)
+        result = call("Lists", "DeleteAttachment", "listName" => @item.list.id, "listItemID" => @item.ID, "url" => @url)
         if delete_result = result.xpath("//sp:DeleteAttachmentResponse", NS).first
           @item.clear_cache_for(:attachment_urls)
           self

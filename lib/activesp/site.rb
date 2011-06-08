@@ -74,13 +74,13 @@ module ActiveSP
     # See {Base#key}
     # @return [String]
     def key # This documentation is not ideal. The ideal doesn't work out of the box
-      encode_key("S", [@url[@connection.root_url.length + 1..-1], @depth])
+      encode_key("S", [@url[@connection.root_url.sub(/\/\z/, "").length + 1..-1], @depth])
     end
     
     # Returns the list of sites below this site. Does not recurse
     # @return [Array<List>]
     def sites
-      result = call("Webs", "get_web_collection")
+      result = call("Webs", "GetWebCollection")
       result.xpath("//sp:Web", NS).map { |web| Site.new(connection, web["Url"].to_s, @depth + 1) }
     end
     cache :sites, :dup => :always
@@ -90,17 +90,17 @@ module ActiveSP
     # @param [String] name The name if the site
     # @return [Site]
     def site(name)
-      result = call("Webs", "get_web", "webUrl" => ::File.join(@url, name))
+      result = call("Webs", "GetWeb", "webUrl" => ::File.join(@url, name))
       Site.new(connection, result.xpath("//sp:Web", NS).first["Url"].to_s, @depth + 1)
-    rescue Savon::SOAPFault
+    rescue Savon::SOAP::Fault
       nil
     end
     
     # Returns the list if lists in this sute. Does not recurse
     # @return [Array<List>]
     def lists
-      result1 = call("Lists", "get_list_collection")
-      result2 = call("SiteData", "get_list_collection")
+      result1 = call("Lists", "GetListCollection")
+      result2 = call("SiteData", "GetListCollection")
       result2_by_id = {}
       result2.xpath("//sp:_sList", NS).each do |element|
         data = {}
@@ -134,7 +134,7 @@ module ActiveSP
     # containing sites as they are automatically inherited
     # @return [Array<ContentType>]
     def content_types
-      result = call("Webs", "get_content_types", "listName" => @id)
+      result = call("Webs", "GetContentTypes", "listName" => @id)
       result.xpath("//sp:ContentType", NS).map do |content_type|
         supersite && supersite.content_type(content_type["ID"]) || ContentType.new(self, nil, content_type["ID"], content_type["Name"], content_type["Description"], content_type["Version"], content_type["Group"])
       end
@@ -161,7 +161,7 @@ module ActiveSP
     # Returns the list of fields for this site. This includes fields inherited from containing sites
     # @return [Array<Field>]
     def fields
-      call("Webs", "get_columns").xpath("//sp:Field", NS).map do |field|
+      call("Webs", "GetColumns").xpath("//sp:Field", NS).map do |field|
         attributes = clean_attributes(field.attributes)
         supersite && supersite.field(attributes["ID"].downcase) || Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], nil, attributes) if attributes["ID"] && attributes["StaticName"]
       end.compact
@@ -189,7 +189,7 @@ module ActiveSP
     def accessible?
       data
       true
-    rescue Savon::HTTPError
+    rescue Savon::HTTP::Error
       false
     end
     
@@ -218,10 +218,10 @@ module ActiveSP
     
     def data
       # Looks like you can't call this as a non-admin. To investigate further
-      call("SiteData", "get_web")
-    rescue Savon::HTTPError
+      call("SiteData", "GetWeb")
+    rescue Savon::HTTP::Error
       # This can fail when you don't have access to this site
-      call("Webs", "get_web", "webUrl" => ".")
+      call("Webs", "GetWeb", "webUrl" => ".")
     end
     cache :data
     
@@ -265,7 +265,7 @@ module ActiveSP
     end
     
     def permissions
-      result = call("Permissions", "get_permission_collection", "objectName" => ::File.basename(@url), "objectType" => "Web")
+      result = call("Permissions", "GetPermissionCollection", "objectName" => ::File.basename(@url), "objectType" => "Web")
       result.xpath("//spdir:Permission", NS).map do |row|
         accessor = row["MemberIsUser"][/true/i] ? User.new(rootsite, row["UserLogin"]) : Group.new(rootsite, row["GroupName"])
         { :mask => Integer(row["Mask"]), :accessor => accessor }
@@ -278,16 +278,23 @@ module ActiveSP
       
       def initialize(site, name)
         @site, @name = site, name
-        @client = Savon::Client.new(::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL"))
-        if site.connection.login
-          case site.connection.auth_type
-          when :ntlm
-            @client.request.ntlm_auth(site.connection.login, site.connection.password)
-          when :basic
-            @client.request.basic_auth(site.connection.login, site.connection.password)
-          else
-            raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
+        @client = Savon::Client.new do |wsdl, http|
+          wsdl.document = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
+          if site.connection.login
+            case site.connection.auth_type
+            when :ntlm
+              http.auth.ntlm(site.connection.login, site.connection.password)
+            when :basic
+              http.auth.basic(site.connection.login, site.connection.password)
+            when :digest
+              http.auth.digest(site.connection.login, site.connection.password)
+            when :gss_negotiate
+              http.auth.gssnegotiate(site.connection.login, site.connection.password)
+            else
+              raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
+            end
           end
+          
         end
       end
       
@@ -296,15 +303,19 @@ module ActiveSP
         if Hash === args[-1]
           body = args.pop
         end
-        @client.send(m, *args) do |soap|
+        @client.request(:wsdl, m.snakecase, *args) do |soap|
           if body
-            soap.body = body.inject({}) { |h, (k, v)| h["wsdl:#{k}"] = v ; h }
+            soap.body = body.map do |k, v|
+              Builder::XmlMarkup.new.wsdl(k.to_sym) { |e| e << v }
+            end.join
           end
           yield soap if block_given?
         end
-      rescue Savon::SOAPFault => e
+      rescue Savon::SOAP::Fault => e
         if e.error_code == 0x80004005
-          raise AccessDenied, "access denied"
+          raise ActiveSP::AccessDenied, "access denied"
+        elsif e.error_code == 0x80070005
+          raise ActiveSP::PermissionDenied, "permission denied"
         else
           raise e
         end

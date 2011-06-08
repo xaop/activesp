@@ -65,7 +65,7 @@ module ActiveSP
   private
     
     def data
-      call("UserGroup", "get_user_info", "userLoginName" => @login_name).xpath("//spdir:User", NS).first
+      call("UserGroup", "GetUserInfo", "userLoginName" => @login_name).xpath("//spdir:User", NS).first
     end
     cache :data
     

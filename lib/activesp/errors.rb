@@ -3,6 +3,9 @@ module ActiveSP
   class AccessDenied < Exception
   end
   
+  class PermissionDenied < Exception
+  end
+  
   class AlreadyExists < Exception
     
     def initialize(msg, &object_blk)
