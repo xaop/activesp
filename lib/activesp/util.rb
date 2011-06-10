@@ -101,7 +101,8 @@ module ActiveSP
             else
               v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
             end
-          
+          when "ThreadIndex"
+            
           else
             # raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
             # Note: can't print self if it needs the attributes to be loaded, so just display the class
@@ -218,6 +219,12 @@ module ActiveSP
         end
       when "ContentTypeId"
         value
+      when "ThreadIndex"
+        if /\A0x([A-F0-9]+)\z/ === value
+          value
+        else
+          raise ArgumentError, "wrong value for #{field.Name} attribute"
+        end
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
@@ -262,6 +269,7 @@ module ActiveSP
           when "LookupMulti"
             v = v.map { |i| i.ID }.join(";#;#")
           when "ContentTypeId"
+          when "ThreadIndex"
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end

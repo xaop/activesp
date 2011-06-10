@@ -520,7 +520,7 @@ module ActiveSP
         else
           # Make it look like the error came from soap
           # Alternatively we could wrap all the soap faults maybe
-          raise Savon::SOAPFault.new(error_text.text.to_s, error_code)
+          raise ArgumentError.new(error_text.text.to_s)
         end
       end
     end
