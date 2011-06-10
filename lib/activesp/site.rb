@@ -306,7 +306,7 @@ module ActiveSP
         @client.request(:wsdl, m.snakecase, *args) do |soap|
           if body
             soap.body = body.map do |k, v|
-              Builder::XmlMarkup.new.wsdl(k.to_sym) { |e| e << v }
+              Builder::XmlMarkup.new.wsdl(k.to_sym) { |e| e << v.to_s }
             end.join
           end
           yield soap if block_given?
