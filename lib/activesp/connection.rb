@@ -160,24 +160,40 @@ module ActiveSP
         u = URL(@root_url)
         [u.host, u.port]
       end
-      Net::HTTP.start(*@open_params) do |http|
-        request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
-        if @login
-          case auth_type
-          when :ntlm
-            request.ntlm_auth(@login, @password)
-          when :basic
-            request.basic_auth(@login, @password)
-          else
-            raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-          end
+      # Net::HTTP.start(*@open_params) do |http|
+      #   request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
+      #   if @login
+      #     case auth_type
+      #     when :ntlm
+      #       request.ntlm_auth(@login, @password)
+      #     when :basic
+      #       request.basic_auth(@login, @password)
+      #     else
+      #       raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+      #     end
+      #   end
+      #   response = http.request(request)
+      #   # if Net::HTTPFound === response
+      #   #   response = fetch(response["location"])
+      #   # end
+      #   # response
+      # end
+      request = HTTPI::Request.new("http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}")
+      if login
+        case auth_type
+        when :ntlm
+          request.auth.ntlm(login, password)
+        when :basic
+          request.auth.basic(login, password)
+        when :digest
+          request.auth.digest(login, password)
+        when :gss_negotiate
+          request.auth.gssnegotiate(login, password)
+        else
+          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
         end
-        response = http.request(request)
-        # if Net::HTTPFound === response
-        #   response = fetch(response["location"])
-        # end
-        # response
       end
+      HTTPI.get(request)
     end
     
     def head(url)
@@ -186,24 +202,40 @@ module ActiveSP
         u = URL(@root_url)
         [u.host, u.port]
       end
-      Net::HTTP.start(*@open_params) do |http|
-        request = Net::HTTP::Head.new(URL(url).full_path.gsub(/ /, "%20"))
-        if @login
-          case auth_type
-          when :ntlm
-            request.ntlm_auth(@login, @password)
-          when :basic
-            request.basic_auth(@login, @password)
-          else
-            raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-          end
+      # Net::HTTP.start(*@open_params) do |http|
+      #   request = Net::HTTP::Head.new(URL(url).full_path.gsub(/ /, "%20"))
+      #   if @login
+      #     case auth_type
+      #     when :ntlm
+      #       request.ntlm_auth(@login, @password)
+      #     when :basic
+      #       request.basic_auth(@login, @password)
+      #     else
+      #       raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+      #     end
+      #   end
+      #   response = http.request(request)
+      #   # if Net::HTTPFound === response
+      #   #   response = fetch(response["location"])
+      #   # end
+      #   # response
+      # end
+      request = HTTPI::Request.new("http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}")
+      if login
+        case auth_type
+        when :ntlm
+          request.auth.ntlm(login, password)
+        when :basic
+          request.auth.basic(login, password)
+        when :digest
+          request.auth.digest(login, password)
+        when :gss_negotiate
+          request.auth.gssnegotiate(login, password)
+        else
+          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
         end
-        response = http.request(request)
-        # if Net::HTTPFound === response
-        #   response = fetch(response["location"])
-        # end
-        # response
       end
+      HTTPI.head(request).headers
     end
     
   end
