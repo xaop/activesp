@@ -42,7 +42,7 @@ module ActiveSP
     persistent { |site, id, *a| [site.connection, [:list, id]] }
     # @private
     def initialize(site, id, title = nil, attributes_before_type_cast1 = nil, attributes_before_type_cast2 = nil)
-      @site, @id = site, id
+      @site, @id = site, id.upcase
       @Title = title if title
       # This testing for emptiness of RootFolder is necessary because it is empty
       # in bulk calls.
