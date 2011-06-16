@@ -1,5 +1,8 @@
 module ActiveSP
   
+  class NotFound < Exception
+  end
+  
   class AccessDenied < Exception
   end
   

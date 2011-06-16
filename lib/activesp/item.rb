@@ -298,7 +298,7 @@ module ActiveSP
       @list.__each_item(query_options, "query" => query) do |attributes|
         return attributes
       end
-      raise ArgumentError, "Not found"
+      raise ActiveSP::NotFound, "Not found"
     end
     cache :raw_attributes
     
