@@ -150,7 +150,7 @@ module ActiveSP
       end
     end
     
-    def type_check_attribute(field, value)
+    def type_check_attribute(field, value, override_restrictions)
       case field.internal_type
       when "Text", "File", "Note", "URL", "Choice"
         value.to_s
@@ -225,16 +225,22 @@ module ActiveSP
         else
           raise ArgumentError, "wrong value for #{field.Name} attribute"
         end
+      when "Computed"
+        if override_restrictions
+          value.to_s
+        else
+          raise "not yet #{field.Name}:#{field.internal_type}"
+        end
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
     end
     
-    def type_check_attributes_for_creation(fields, attributes)
+    def type_check_attributes_for_creation(fields, attributes, override_restrictions)
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
-          if !field.ReadOnly || field.Name == "ContentType"
-            h[k] = type_check_attribute(field, v)
+          if override_restrictions || !field.ReadOnly || field.Name == "ContentType"
+            h[k] = type_check_attribute(field, v, override_restrictions)
             h
           else
             raise ArgumentError, "field #{field.Name} is read-only"
@@ -245,7 +251,7 @@ module ActiveSP
       end
     end
     
-    def untype_cast_attributes(site, list, fields, attributes)
+    def untype_cast_attributes(site, list, fields, attributes, override_restrictions)
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
           case field.internal_type
@@ -270,6 +276,12 @@ module ActiveSP
             v = v.map { |i| i.ID }.join(";#;#")
           when "ContentTypeId"
           when "ThreadIndex"
+          when "Computed"
+            if override_restrictions
+              v = v.to_s
+            else
+              raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
+            end
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end
@@ -295,10 +307,16 @@ module ActiveSP
       end.join("")
     end
     
-    def construct_xml_for_update_list_items(xml, fields, attributes)
+    def construct_xml_for_update_list_items(xml, list, fields, attributes)
       attributes.map do |k, v|
         field = fields[k]
-        xml.Field(v, "Name" => field.StaticName)
+        if field.StaticName == "ContentType"
+          type = list.content_types_by_name[v]
+          xml.Field(v, "Name" => field.StaticName)
+          xml.Field(type.ID, "Name" => "ContentTypeId")
+        else
+          xml.Field(v, "Name" => field.StaticName)
+        end
       end
     end
     

@@ -85,9 +85,11 @@ module ActiveSP
     # @return [Integer, Float, String, Time, Boolean, Base] The assigned value
     # @raise [ArgumentError] Raised when this object does not have an attribute by the given name or if the attribute by the given name is read-only
     def set_attribute(name, value)
-      has_attribute?(name) and field = attribute_type(name) and internal_attribute_types[name] or raise ArgumentError, "#{self} has no field by the name #{name}"
-      !field.ReadOnly or raise ArgumentError, "field #{name} of #{self} is read-only"
-      current_attributes[name] = type_check_attribute(field, value)
+      set_attribute_internal(name, value, false)
+    end
+    
+    def set_attribute!(name, value)
+      set_attribute_internal(name, value, true)
     end
     
     # Provides convenient getters and setters for attributes. Note that no name mangling
@@ -132,6 +134,16 @@ module ActiveSP
         end
       end
       changes
+    end
+    
+    def set_attribute_internal(name, value, override_restrictions)
+      has_attribute?(name) and field = attribute_type_internal(name, override_restrictions) or raise ArgumentError, "#{self} has no field by the name #{name}"
+      override_restrictions or !field.ReadOnly or raise ArgumentError, "field #{name} of #{self} is read-only"
+      current_attributes[name] = type_check_attribute(field, value, override_restrictions)
+    end
+    
+    def attribute_type_internal(name, override_restrictions)
+      attribute_type(name)
     end
     
   end

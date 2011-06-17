@@ -141,6 +141,11 @@ module ActiveSP
     end
     cache :content_types, :dup => :always
     
+    def content_types_by_name
+      content_types.inject({}) { |h, t| h[t.Name] = t ; h }
+    end
+    cache :content_types_by_name, :dup => :always
+    
     # @private
     def content_type(id)
       content_types.find { |t| t.id == id }
@@ -183,7 +188,7 @@ module ActiveSP
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(self, nil, internal_attribute_types, changed_attributes)
+      p untype_cast_attributes(self, nil, internal_attribute_types, changed_attributes, false)
     end
     
     def accessible?

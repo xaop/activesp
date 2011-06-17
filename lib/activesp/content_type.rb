@@ -106,7 +106,7 @@ module ActiveSP
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, false)
     end
     
     # @private

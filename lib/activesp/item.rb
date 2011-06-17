@@ -188,7 +188,7 @@ module ActiveSP
     # See {Base#save}
     # @return [self]
     def save
-      update_attributes_internal(untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes))
+      update_attributes_internal(untype_cast_attributes(@site, nil, @list.fields_by_name, changed_attributes, true))
       self
     end
     
@@ -242,6 +242,13 @@ module ActiveSP
     def update_attributes(attributes)
       attributes.each do |k, v|
         set_attribute(k, v)
+      end
+      save
+    end
+    
+    def update_attributes!(attributes)
+      attributes.each do |k, v|
+        set_attribute!(k, v)
       end
       save
     end
@@ -331,7 +338,7 @@ module ActiveSP
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => @list.attribute("Version")) do |xml|
         xml.Method("ID" => 1, "Cmd" => "Update") do
           xml.Field(self.ID, "Name" => "ID")
-          construct_xml_for_update_list_items(xml, @list.fields_by_name, attributes)
+          construct_xml_for_update_list_items(xml, @list, @list.fields_by_name, attributes)
           if file_ref
             xml.Field(base_name, "Name" => "BaseName")
             xml.Field(file_ref, "Name" => "FileRef") 
@@ -356,6 +363,14 @@ module ActiveSP
           message &&= message.text
           raise "cannot update item, error code = #{error_code}, error description = #{message}"
         end
+      end
+    end
+    
+    def attribute_type_internal(name, override_restrictions)
+      if override_restrictions
+        @list.fields_by_name[name]
+      else
+        attribute_type(name)
       end
     end
     

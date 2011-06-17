@@ -52,10 +52,17 @@ module ActiveSP
       def create(parameters = {})
         @object.create_folder(parameters)
       end
+      def create!(parameters = {})
+        @object.create_folder!(parameters)
+      end
     end
     
     def create_folder(parameters = {})
       @list.create_folder(parameters.merge(:folder => absolute_url))
+    end
+    
+    def create_folder!(parameters = {})
+      @list.create_folder!(parameters.merge(:folder => absolute_url))
     end
     
     def each_document(options = {}, &blk)
@@ -65,10 +72,17 @@ module ActiveSP
       def create(parameters = {})
         @object.create_document(parameters)
       end
+      def create!(parameters = {})
+        @object.create_document!(parameters)
+      end
     end
     
     def create_document(parameters = {})
       @list.create_document(parameters.merge(:folder => absolute_url, :folder_object => self))
+    end
+    
+    def create_document!(parameters = {})
+      @list.create_document!(parameters.merge(:folder => absolute_url, :folder_object => self))
     end
     
     # Returns the item with the given name

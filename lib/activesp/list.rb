@@ -131,6 +131,9 @@ module ActiveSP
       def create(parameters = {})
         @object.create_document(parameters)
       end
+      def create!(parameters = {})
+        @object.create_document!(parameters)
+      end
     end
     
     def each_folder(parameters = {}, &blk)
@@ -147,6 +150,9 @@ module ActiveSP
     association :folders do
       def create(parameters = {})
         @object.create_folder(parameters)
+      end
+      def create!(parameters = {})
+        @object.create_folder!(parameters)
       end
     end
     
@@ -176,10 +182,18 @@ module ActiveSP
       raise_on_unknown_type
     end
     
+    def create_document!(parameters = {})
+      create_document(parameters.merge(:override_restrictions => true))
+    end
+    
     def create_folder(parameters = {})
       name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the folder name in the 'FileLeafRef' parameter"
       
       create_list_item(parameters.merge(:folder_name => name))
+    end
+    
+    def create_folder!(parameters = {})
+      create_folder(parameters.merge(:override_restrictions => true))
     end
     
     def changes_since_token(token, options = {})
@@ -242,6 +256,11 @@ module ActiveSP
     end
     cache :content_types, :dup => :always
     
+    def content_types_by_name
+      content_types.inject({}) { |h, t| h[t.Name] = t ; h }
+    end
+    cache :content_types_by_name, :dup => :always
+    
     # @private
     def content_type(id)
       content_types.find { |t| t.id == id }
@@ -259,7 +278,7 @@ module ActiveSP
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, override_restrictions)
     end
     
     # @private
@@ -467,14 +486,15 @@ module ActiveSP
       folder = parameters.delete(:folder)
       folder_object = parameters.delete(:folder_object)
       overwrite = parameters.delete(:overwrite)
+      override_restrictions = parameters.delete(:override_restrictions)
       file_name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the file name in the 'FileLeafRef' parameter"
       if !overwrite
         object = __item(file_name, :folder => folder_object)
         raise ActiveSP::AlreadyExists.new("document with file name #{file_name.inspect} already exists") { object } if object
       end
       destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(folder || url, file_name)))
-      parameters = type_check_attributes_for_creation(fields_by_name, parameters)
-      attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
+      parameters = type_check_attributes_for_creation(fields_by_name, parameters, override_restrictions)
+      attributes = untype_cast_attributes(@site, self, fields_by_name, parameters, override_restrictions)
       fields = construct_xml_for_copy_into_items(fields_by_name, attributes)
       source_url = escape_xml(file_name)
       result = call("Copy", "CopyIntoItems", "DestinationUrls" => destination_urls, "Stream" => Base64.encode64(content.to_s), "SourceUrl" => source_url, "Fields" => fields)
@@ -492,17 +512,19 @@ module ActiveSP
       folder = parameters.delete(:folder)
       folder_object = parameters.delete(:folder_object)
       folder_name = parameters.delete(:folder_name)
-      parameters = type_check_attributes_for_creation(fields_by_name, parameters)
-      attributes = untype_cast_attributes(@site, self, fields_by_name, parameters)
-      updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
+      override_restrictions = parameters.delete(:override_restrictions)
+      parameters = type_check_attributes_for_creation(fields_by_name, parameters, override_restrictions)
+      attributes = untype_cast_attributes(@site, self, fields_by_name, parameters, override_restrictions)
+      folder_attributes = !folder_name && folder ? { "RootFolder" => folder } : {}
+      updates = Builder::XmlMarkup.new.Batch(folder_attributes.merge("OnError" => "Continue")) do |xml|
         xml.Method("ID" => 1, "Cmd" => "New") do
           xml.Field("New", "Name" => "ID")
-          construct_xml_for_update_list_items(xml, fields_by_name, attributes)
+          construct_xml_for_update_list_items(xml, self, fields_by_name, attributes)
           if folder_name
             xml.Field(::File.join(folder || url, folder_name), "Name" => "FileRef")
             xml.Field(1, "Name" => "FSObjType")
           else
-            xml.Field(::File.join(folder, Time.now.strftime("%Y%m%d%H%M%S-#{rand(16**3).to_s(16)}")), "Name" => "FileRef") if folder
+            xml.Field(0, "Name" => "FSObjType")
           end
         end
       end
