@@ -90,6 +90,18 @@ module ActiveSP
     end
     cache :roles, :dup => :always
     
+    def templates
+      root.send(:call, "Sites", "GetSiteTemplates", "LCID" => 1033).xpath("//sp:Template", NS).map do |row|
+        attributes = clean_attributes(row.attributes)
+        ActiveSP::Template.new(root, attributes["Name"], attributes)
+      end
+    end
+    cache :templates, :dup => :always
+    
+    def template(name)
+      templates.find { |template| template.Name == name }
+    end
+    
   private
     
     def users_by_login
