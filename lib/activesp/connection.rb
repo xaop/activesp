@@ -80,6 +80,16 @@ class HTTPI::Adapter::Curb
   
 end
 
+# This is because setting the cookie causes problems on SP 2011
+class Savon::Client
+  
+private
+  
+  def set_cookie(headers)
+  end
+  
+end
+
 module ActiveSP
   
   # This class is uses to configure the connection to a SharePoint repository. This is
@@ -142,6 +152,15 @@ module ActiveSP
           ActiveSP::ContentType.new(parent.site, parent, trail[1])
         else
           ActiveSP::ContentType.new(parent, nil, trail[1])
+        end
+      when ?M
+        case type[1]
+        when ?S
+          site_template(trail[0])
+        when ?L
+          list_template(trail[0].to_i)
+        else
+          raise "not yet #{key.inspect}"
         end
       else
         raise "not yet #{key.inspect}"

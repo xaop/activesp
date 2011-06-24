@@ -33,7 +33,7 @@ module ActiveSP
     
     # The URL of this site
     # @return [String]
-    attr_reader :url
+    attr_reader :url # TODO: deprecate this in favor of Url
     # @private
     attr_reader :connection
     
@@ -42,6 +42,14 @@ module ActiveSP
     def initialize(connection, url, depth = 0)
       @connection, @url, @depth = connection, url, depth
       @services = {}
+    end
+    
+    def Url
+      @url
+    end
+    
+    def Name
+      ::File.basename(@url)
     end
     
     # @private
@@ -77,13 +85,14 @@ module ActiveSP
       encode_key("S", [@url[@connection.root_url.sub(/\/\z/, "").length + 1..-1], @depth])
     end
     
-    # Returns the list of sites below this site. Does not recurse
-    # @return [Array<List>]
-    def sites
-      result = call("Webs", "GetWebCollection")
-      result.xpath("//sp:Web", NS).map { |web| Site.new(connection, web["Url"].to_s, @depth + 1) }
+    def each_site(&blk)
+      __sites.each(&blk)
     end
-    cache :sites, :dup => :always
+    association :sites do
+      def create(attributes)
+        @object.create_site(attributes)
+      end
+    end
     
     # Returns the site with the given name. This name is what appears in the URL as name and is immutable. Return nil
     # if such a site does not exist
@@ -96,24 +105,27 @@ module ActiveSP
       nil
     end
     
-    # Returns the list if lists in this sute. Does not recurse
-    # @return [Array<List>]
-    def lists
-      result1 = call("Lists", "GetListCollection")
-      result2 = call("SiteData", "GetListCollection")
-      result2_by_id = {}
-      result2.xpath("//sp:_sList", NS).each do |element|
-        data = {}
-        element.children.each do |ch|
-          data[ch.name] = ch.inner_text
-        end
-        result2_by_id[data["InternalName"]] = data
-      end
-      result1.xpath("//sp:List", NS).select { |list| list["Title"] != "User Information List" }.map do |list|
-        List.new(self, list["ID"].to_s, list["Title"].to_s, clean_attributes(list.attributes), result2_by_id[list["ID"].to_s])
+    def create_site(attributes)
+      template = attributes.delete("Template")
+      ActiveSP::SiteTemplate === template or raise ArgumentError, "wrong type for Template attribute"
+      title = attributes.delete("Title")
+      title or raise ArgumentError, "wrong type for Title attribute"
+      title = title.to_s
+      lcid = attributes.delete("Language")
+      Integer === lcid or raise ArgumentError, "wrong type for Language attribute"
+      parameters = type_check_attributes_for_creation(fields_by_name, attributes, false)
+      result = call("Meetings", "CreateWorkspace", "title" => title, "templateName" => template.Name, "lcid" => lcid)
+      Site.new(connection, result.xpath("//meet:CreateWorkspace", NS).first["Url"].to_s, @depth + 1)
+    end
+    
+    def each_list(&blk)
+      __lists.each(&blk)
+    end
+    association :lists do
+      def create(attributes)
+        @object.create_list(attributes)
       end
     end
-    cache :lists, :dup => :always
     
     # Returns the list with the given name. The name is what appears in the URL as name and is immutable. Returns nil
     # if such a list does not exist
@@ -121,6 +133,19 @@ module ActiveSP
     # @return [List]
     def list(name)
       lists.find { |list| ::File.basename(list.url) == name }
+    end
+    
+    def create_list(attributes)
+      template = attributes.delete("ServerTemplate")
+      ActiveSP::ListTemplate === template or raise ArgumentError, "wrong type for ServerTemplate attribute"
+      title = attributes.delete("Title")
+      title or raise ArgumentError, "wrong type for Title attribute"
+      title = title.to_s
+      description = attributes.delete("Description").to_s
+      parameters = type_check_attributes_for_creation(fields_by_name, attributes, false)
+      result = call("Lists", "AddList", "listName" => title, "description" => description, "templateID" => template.Type)
+      list = result.xpath("//sp:List", NS).first
+      List.new(self, list["ID"].to_s, list["Title"].to_s, clean_attributes(list.attributes))
     end
     
     # Returns the site or list with the given name, or nil if it does not exist
@@ -185,10 +210,18 @@ module ActiveSP
       fields.find { |f| f.ID == id }
     end
     
+    def update_attributes(attributes)
+      attributes.each do |k, v|
+        set_attribute(k, v)
+      end
+      save
+    end
+    
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(self, nil, internal_attribute_types, changed_attributes, false)
+      update_attributes_internal(untype_cast_attributes(self, nil, internal_attribute_types, changed_attributes, false))
+      self
     end
     
     def accessible?
@@ -198,6 +231,12 @@ module ActiveSP
       false
     end
     
+    def destroy
+      call("Dws", "DeleteDws")
+      supersite.__unregister_site(self)
+      self
+    end
+    
     # @private
     def to_s
       "#<ActiveSP::Site url=#{@url}>"
@@ -205,6 +244,12 @@ module ActiveSP
     
     # @private
     alias inspect to_s
+    
+    #private
+    def __unregister_site(site)
+      p [:__unregister_site, self]
+      @__sites.delete(site) if @__sites
+    end
     
   private
     
@@ -236,10 +281,10 @@ module ActiveSP
         element.children.each do |ch|
           result[ch.name] = ch.inner_text
         end
-        result
+        result.merge("Url" => @url, "Name" => self.Name)
       else
         element = data.xpath("//sp:Web", NS).first
-        clean_attributes(element.attributes)
+        clean_attributes(element.attributes).merge("Url" => @url, "Name" => self.Name)
       end
     end
     cache :attributes_before_type_cast
@@ -261,8 +306,10 @@ module ActiveSP
         "Language" => GhostField.new("Language", "Integer", false, true),
         "LastModified" => GhostField.new("LastModified", "XMLDateTime", false, true, "Modified"),
         "LastModifiedForceRecrawl" => GhostField.new("LastModifiedForceRecrawl", "XMLDateTime", false, true, "Last Modified Force Recrawl"),
+        "Name" => GhostField.new("Name", "Text", false, true),
         "Permissions" => GhostField.new("Permissions", "Text", false, true),
-        "Title" => GhostField.new("Title", "Text", false, true),
+        "Title" => GhostField.new("Title", "Text", false, false),
+        "Url" => GhostField.new("Url", "Text", false, true),
         "UsedInAutocat" => GhostField.new("UsedInAutocat", "Bool", false, true, "Used in Autocat?"),
         "ValidSecurityInfo" => GhostField.new("ValidSecurityInfo", "Bool", false, true, "Has Valid Security Info?"),
         "WebID" => GhostField.new("WebID", "Text", false, true, "Web ID")
@@ -277,6 +324,35 @@ module ActiveSP
       end
     end
     cache :permissions, :dup => :always
+    
+    def update_attributes_internal(attributes)
+      call("Dws", "RenameDws", "title" => attributes["Title"])
+      reload
+    end
+    
+    def __sites
+      p [:__sites, self]
+      result = call("Webs", "GetWebCollection")
+      result.xpath("//sp:Web", NS).map { |web| Site.new(connection, web["Url"].to_s, @depth + 1) }
+    end
+    cache :__sites, :dup => :always
+    
+    def __lists
+      result1 = call("Lists", "GetListCollection")
+      result2 = call("SiteData", "GetListCollection")
+      result2_by_id = {}
+      result2.xpath("//sp:_sList", NS).each do |element|
+        data = {}
+        element.children.each do |ch|
+          data[ch.name] = ch.inner_text
+        end
+        result2_by_id[data["InternalName"]] = data
+      end
+      result1.xpath("//sp:List", NS).select { |list| list["Title"] != "User Information List" }.map do |list|
+        List.new(self, list["ID"].to_s, list["Title"].to_s, clean_attributes(list.attributes), result2_by_id[list["ID"].to_s])
+      end
+    end
+    cache :__lists, :dup => :always
     
     # @private
     class Service

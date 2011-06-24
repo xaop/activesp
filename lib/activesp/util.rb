@@ -226,11 +226,14 @@ module ActiveSP
           raise ArgumentError, "wrong value for #{field.Name} attribute"
         end
       when "Computed"
-        if override_restrictions
+        # ContentType is Computed in SP 2011
+        if override_restrictions || field.Name == "ContentType"
           value.to_s
         else
           raise "not yet #{field.Name}:#{field.internal_type}"
         end
+      when "ListReference"
+        ActiveSP::List === value and value or raise ArgumentError, "wrong type for #{field.Name} attribute"
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
@@ -277,11 +280,13 @@ module ActiveSP
           when "ContentTypeId"
           when "ThreadIndex"
           when "Computed"
-            if override_restrictions
+            if override_restrictions || k == "ContentType"
               v = v.to_s
             else
               raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
             end
+          when "ListReference"
+            v = v.ID
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end

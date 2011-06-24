@@ -28,8 +28,10 @@ module ActiveSP
   # @private
   NS = {
     "sp" => "http://schemas.microsoft.com/sharepoint/soap/",
+    "SP" => "http://schemas.microsoft.com/sharepoint/",
     "z" => "#RowsetSchema",
-    "spdir" => "http://schemas.microsoft.com/sharepoint/soap/directory/"
+    "spdir" => "http://schemas.microsoft.com/sharepoint/soap/directory/",
+    "meet" => "http://schemas.microsoft.com/sharepoint/soap/meetings/"
   }
   
   module Root
@@ -90,16 +92,28 @@ module ActiveSP
     end
     cache :roles, :dup => :always
     
-    def templates
+    def site_templates
       root.send(:call, "Sites", "GetSiteTemplates", "LCID" => 1033).xpath("//sp:Template", NS).map do |row|
         attributes = clean_attributes(row.attributes)
-        ActiveSP::Template.new(root, attributes["Name"], attributes)
+        ActiveSP::SiteTemplate.new(root, attributes["Name"], attributes)
       end
     end
-    cache :templates, :dup => :always
+    cache :site_templates, :dup => :always
     
-    def template(name)
-      templates.find { |template| template.Name == name }
+    def site_template(name)
+      site_templates.find { |template| template.Name == name }
+    end
+    
+    def list_templates
+      result = root.send(:call, "Webs", "GetListTemplates")
+      result.xpath("//SP:ListTemplate", NS).map do |row|
+        attributes = clean_attributes(row.attributes)
+        ActiveSP::ListTemplate.new(root, attributes["Type"].to_i, attributes)
+      end
+    end
+    
+    def list_template(type)
+      list_templates.find { |template| template.Type == type }
     end
     
   private

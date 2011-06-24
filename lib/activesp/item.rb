@@ -341,7 +341,11 @@ module ActiveSP
           construct_xml_for_update_list_items(xml, @list, @list.fields_by_name, attributes)
           if file_ref
             xml.Field(base_name, "Name" => "BaseName")
-            xml.Field(file_ref, "Name" => "FileRef") 
+            xml.Field(file_ref, "Name" => "FileRef")
+          else
+            @list.when_document_library do
+              xml.Field(URI.unescape(original_attributes["EncodedAbsUrl"]), "Name" => "FileRef")
+            end
           end
           xml.Field("1", "Name" => "FSObjType") if is_folder?
         end

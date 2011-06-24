@@ -248,6 +248,32 @@ module ActiveSP
       fields.find { |f| f.ID == id }
     end
     
+    def create_field(attributes)
+      # TODO: remove this in time
+      add_to_view = attributes.delete(:add_to_view)
+      parameters = ActiveSP::Field.check_attributes_for_creation(@site, attributes)
+      fields = Builder::XmlMarkup.new.Fields do |xml|
+        xml.Method({ "ID" => "1" }.merge(add_to_view ? { "AddToView" => add_to_view } : {})) do
+          xml.Field(parameters)
+        end
+      end
+      result = call("Lists", "UpdateList", "listName" => self.id, "newFields" => fields)
+      method = result.xpath("//sp:Method", NS).first
+      if error_text = method.xpath("./sp:ErrorText", NS).first
+        error_code = method.xpath("./sp:ErrorCode", NS).first.text
+        raise ArgumentError.new("#{error_code} : #{error_text.text.to_s}")
+      else
+        field = method.xpath("./sp:Field", NS).first
+        attributes = clean_attributes(field.attributes)
+        result = Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], @site.field(attributes["ID"].downcase), attributes)
+        if @fields
+          @fields << result
+          clear_cache_for(:fields_by_name)
+        end
+        result
+      end
+    end
+    
     def content_types
       result = call("Lists", "GetListContentTypes", "listName" => @id)
       result.xpath("//sp:ContentType", NS).map do |content_type|
@@ -275,10 +301,18 @@ module ActiveSP
     end
     cache :permission_set
     
+    def update_attributes(attributes)
+      attributes.each do |k, v|
+        set_attribute(k, v)
+      end
+      save
+    end
+    
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, override_restrictions)
+      update_attributes_internal(untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, true))
+      self
     end
     
     # @private
@@ -391,7 +425,7 @@ module ActiveSP
       @@internal_attribute_types ||= {
         "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true, "Allow Anonymous Access?"),
         "AllowDeletion" => GhostField.new("AllowDeletion", "Bool", false, true, "Allow Deletion?"),
-        "AllowMultiResponses" => GhostField.new("AllowMultiResponses", "Bool", false, true, "Allow Multiple Responses?"),
+        "AllowMultiResponses" => GhostField.new("AllowMultiResponses", "Bool", false, false, "Allow Multiple Responses?"),
         "AnonymousPermMask" => GhostField.new("AnonymousPermMask", "Integer", false, true, "Anonymous Permission Mask"),
         "AnonymousViewListItems" => GhostField.new("AnonymousViewListItems", "Bool", false, true, "Anonymous Can View List Items?"),
         "Author" => GhostField.new("Author", "InternalUser", false, true),
@@ -400,22 +434,22 @@ module ActiveSP
         "Created" => GhostField.new("Created", "StandardDateTime", false, true, "Created"),
         "DefaultViewUrl" => GhostField.new("DefaultViewUrl", "Text", false, true, "Default View Url"),
         "Description" => GhostField.new("Description", "Text", false, false),
-        "Direction" => GhostField.new("Direction", "Text", false, true),
+        "Direction" => GhostField.new("Direction", "Text", false, false),
         "DocTemplateUrl" => GhostField.new("DocTemplateUrl", "Text", false, true, "Document Template URL"),
         "EmailAlias" => GhostField.new("EmailAlias", "Text", false, true, "Email Alias"),
         "EmailInsertsFolder" => GhostField.new("EmailInsertsFolder", "Text", false, true, "Email Inserts Folder"),
-        "EnableAssignedToEmail" => GhostField.new("EnableAssignedToEmail", "Bool", false, true, "Enable Assign to Email?"),
-        "EnableAttachments" => GhostField.new("EnableAttachments", "Bool", false, true, "Enable Attachments?"),
+        "EnableAssignedToEmail" => GhostField.new("EnableAssignedToEmail", "Bool", false, false, "Enable Assign to Email?"),
+        "EnableAttachments" => GhostField.new("EnableAttachments", "Bool", false, false, "Enable Attachments?"),
         "EnableMinorVersion" => GhostField.new("EnableMinorVersion", "Bool", false, true, "Enable Minor Versions?"),
-        "EnableModeration" => GhostField.new("EnableModeration", "Bool", false, true, "Enable Moderation?"),
-        "EnableVersioning" => GhostField.new("EnableVersioning", "Bool", false, true, "Enable Versioning?"),
+        "EnableModeration" => GhostField.new("EnableModeration", "Bool", false, false, "Enable Moderation?"),
+        "EnableVersioning" => GhostField.new("EnableVersioning", "Bool", false, false, "Enable Versioning?"),
         "EventSinkAssembly" => GhostField.new("EventSinkAssembly", "Text", false, true, "Event Sink Assembly"),
         "EventSinkClass" => GhostField.new("EventSinkClass", "Text", false, true, "Event Sink Class"),
         "EventSinkData" => GhostField.new("EventSinkData", "Text", false, true, "Event Sink Data"),
         "FeatureId" => GhostField.new("FeatureId", "Text", false, true, "Feature ID"),
         "Flags" => GhostField.new("Flags", "Integer", false, true),
         "HasUniqueScopes" => GhostField.new("HasUniqueScopes", "Bool", false, true, "Has Unique Scopes?"),
-        "Hidden" => GhostField.new("Hidden", "Bool", false, true),
+        "Hidden" => GhostField.new("Hidden", "Bool", false, false),
         "ID" => GhostField.new("ID", "Text", false, true),
         "ImageUrl" => GhostField.new("ImageUrl", "Text", false, true, "Image URL"),
         "InheritedSecurity" => GhostField.new("InheritedSecurity", "Bool", false, true, "Has Inherited Security?"),
@@ -428,9 +462,10 @@ module ActiveSP
         "MajorWithMinorVersionsLimit" => GhostField.new("MajorWithMinorVersionsLimit", "Integer", false, true, "Major With Minor Versions Limit"),
         "MobileDefaultViewUrl" => GhostField.new("MobileDefaultViewUrl", "Text", false, true, "Mobile Default View URL"),
         "Modified" => GhostField.new("Modified", "StandardDateTime", false, true),
-        "MultipleDataList" => GhostField.new("MultipleDataList", "Bool", false, true, "Is Multiple Data List?"),
+        "MultipleDataList" => GhostField.new("MultipleDataList", "Bool", false, false, "Is Multiple Data List?"),
         "Name" => GhostField.new("Name", "Text", false, true),
-        "Ordered" => GhostField.new("Ordered", "Bool", false, true),
+        "OnQuickLaunch" => GhostField.new("OnQuickLaunch", "Bool", false, false),
+        "Ordered" => GhostField.new("Ordered", "Bool", false, false),
         "Permissions" => GhostField.new("Permissions", "Text", false, true),
         "ReadSecurity" => GhostField.new("ReadSecurity", "Integer", false, true, "Read Security"),
         "RequireCheckout" => GhostField.new("RequireCheckout", "Bool", false, true, "Requires Checkout?"),
@@ -438,9 +473,9 @@ module ActiveSP
         "ScopeId" => GhostField.new("ScopeId", "Text", false, true, "Scope ID"),
         "SendToLocation" => GhostField.new("SendToLocation", "Text", false, true, "Send To Location"),
         "ServerTemplate" => GhostField.new("ServerTemplate", "Text", false, true, "Server Template"),
-        "ShowUser" => GhostField.new("ShowUser", "Bool", false, true, "Shows User?"),
+        "ShowUser" => GhostField.new("ShowUser", "Bool", false, false, "Shows User?"),
         "ThumbnailSize" => GhostField.new("ThumbnailSize", "Integer", false, true, "Thumbnail Size"),
-        "Title" => GhostField.new("Title", "Text", false, true),
+        "Title" => GhostField.new("Title", "Text", false, false),
         "ValidSecurityInfo" => GhostField.new("ValidSecurityInfo", "Bool", false, true, "Has Valid Security Info?"),
         "Version" => GhostField.new("Version", "Integer", false, true),
         "WebFullUrl" => GhostField.new("WebFullUrl", "Text", false, true, "Full Web URL"),
@@ -545,6 +580,12 @@ module ActiveSP
           raise ArgumentError.new(error_text.text.to_s)
         end
       end
+    end
+    
+    def update_attributes_internal(attributes)
+      properties = Builder::XmlMarkup.new.List(attributes)
+      call("Lists", "UpdateList", "listName" => self.id, "listProperties" => properties)
+      reload
     end
     
   end

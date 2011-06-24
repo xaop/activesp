@@ -25,23 +25,27 @@
 
 module ActiveSP
   
-  class Template < Base
+  class ListTemplate < Base
     
     extend Caching
     extend PersistentCaching
     include Util
     
-    attr_reader :Name
+    attr_reader :Type
     
-    persistent { |connection, name, *a| [connection, [:template, name]] }
+    persistent { |connection, type, *a| [connection, [:template, type]] }
     # @private
-    def initialize(connection, name, attributes_before_type_cast)
-      @connection, @Name, @attributes_before_type_cast = connection, name, attributes_before_type_cast
+    def initialize(connection, type, attributes_before_type_cast)
+      @connection, @Type, @attributes_before_type_cast = connection, type, attributes_before_type_cast
+    end
+    
+    def key
+      encode_key("ML", [@Type])
     end
     
     # @private
     def to_s
-      "#<ActiveSP::Template name=#{self.Name}>"
+      "#<ActiveSP::Template type=#{self.Type}>"
     end
     
     # @private
@@ -55,18 +59,23 @@ module ActiveSP
     
     def internal_attribute_types
       @@internal_attribute_types ||= {
+        "BaseType" => GhostField.new("BaseType", "Text", false, true),
         "Description" => GhostField.new("Description", "Text", false, true),
-        "DisplayCategory" => GhostField.new("DisplayCategory", "Text", false, true),
-        "HasProvisionClass" => GhostField.new("HasProvisionClass", "Bool", false, true),
-        "ID" => GhostField.new("ID", "Integer", false, true),
-        "ImageUrl" => GhostField.new("ImageUrl", "Text", false, true),
-        "IsCustom" => GhostField.new("IsCustom", "Bool", false, true),
-        "IsHidden" => GhostField.new("IsHidden", "Bool", false, true),
-        "IsRootWebOnly" => GhostField.new("IsRootWebOnly", "Bool", false, true),
-        "IsSubWebOnly" => GhostField.new("IsSubWebOnly", "Bool", false, true),
-        "IsUnique" => GhostField.new("IsUnique", "Bool", false, true),
+        "DisplayName" => GhostField.new("DisplayName", "Text", false, true),
+        "DocumentTemplate" => GhostField.new("DocumentTemplate", "Integer", false, true),
+        "DontSaveInTemplate" => GhostField.new("DontSaveInTemplate", "Bool", false, true),
+        "FeatureId" => GhostField.new("FeatureId", "Text", false, true),
+        "HiddenList" => GhostField.new("HiddenList", "Bool", false, true),
+        "Image" => GhostField.new("Image", "Text", false, true),
+        "FolderCreation" => GhostField.new("FolderCreation", "Bool", false, true),
+        "Hidden" => GhostField.new("Hidden", "Bool", false, true),
+        "OnQuickLaunch" => GhostField.new("OnQuickLaunch", "Bool", false, true),
         "Name" => GhostField.new("Name", "Text", false, true),
-        "Title" => GhostField.new("Title", "Text", false, true)
+        "Sequence" => GhostField.new("Sequence", "Integer", false, true),
+        "SecurityBits" => GhostField.new("SecurityBits", "Text", false, true),
+        "Type" => GhostField.new("Type", "Integer", false, true),
+        "UseRootFolderForNavigation" => GhostField.new("UseRootFolderForNavigation", "Bool", false, true),
+        "VersioningEnabled" => GhostField.new("VersioningEnabled", "Bool", false, true)
       }
     end
     
