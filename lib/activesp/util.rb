@@ -169,6 +169,8 @@ module ActiveSP
         if field.List
           if ::ActiveSP::Item === value && value.list == field.List
             value
+          elsif nil == value
+            nil
           else
             raise ArgumentError, "wrong type for #{field.Name} attribute"
           end
