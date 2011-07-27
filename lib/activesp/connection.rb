@@ -179,25 +179,8 @@ module ActiveSP
         u = URL(@root_url)
         [u.host, u.port]
       end
-      # Net::HTTP.start(*@open_params) do |http|
-      #   request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
-      #   if @login
-      #     case auth_type
-      #     when :ntlm
-      #       request.ntlm_auth(@login, @password)
-      #     when :basic
-      #       request.basic_auth(@login, @password)
-      #     else
-      #       raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-      #     end
-      #   end
-      #   response = http.request(request)
-      #   # if Net::HTTPFound === response
-      #   #   response = fetch(response["location"])
-      #   # end
-      #   # response
-      # end
-      request = HTTPI::Request.new("http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}")
+      url = "http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+      request = HTTPI::Request.new(url)
       if login
         case auth_type
         when :ntlm
@@ -221,25 +204,8 @@ module ActiveSP
         u = URL(@root_url)
         [u.host, u.port]
       end
-      # Net::HTTP.start(*@open_params) do |http|
-      #   request = Net::HTTP::Head.new(URL(url).full_path.gsub(/ /, "%20"))
-      #   if @login
-      #     case auth_type
-      #     when :ntlm
-      #       request.ntlm_auth(@login, @password)
-      #     when :basic
-      #       request.basic_auth(@login, @password)
-      #     else
-      #       raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-      #     end
-      #   end
-      #   response = http.request(request)
-      #   # if Net::HTTPFound === response
-      #   #   response = fetch(response["location"])
-      #   # end
-      #   # response
-      # end
-      request = HTTPI::Request.new("http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}")
+      url = "http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+      request = HTTPI::Request.new(url)
       if login
         case auth_type
         when :ntlm
