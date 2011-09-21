@@ -331,7 +331,6 @@ module ActiveSP
     end
     
     def __sites
-      p [:__sites, self]
       result = call("Webs", "GetWebCollection")
       result.xpath("//sp:Web", NS).map { |web| Site.new(connection, web["Url"].to_s, @depth + 1) }
     end
