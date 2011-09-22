@@ -52,11 +52,6 @@ module ActiveSP
       ::File.basename(@url)
     end
     
-    # @private
-    def relative_url(url = @url)
-      url[@connection.root_url.rindex("/") + 1..-1]
-    end
-    
     # Returns the containing site, or nil if this is the root site
     # @return [Site]
     def supersite

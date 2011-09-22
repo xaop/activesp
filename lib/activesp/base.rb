@@ -31,6 +31,16 @@ module ActiveSP
     extend Caching
     extend Associations
     
+    # @private
+    def relative_url(site_or_list = @list.site.connection.root)
+      reference_url = site_or_list.url
+      reference_url += "/" unless reference_url[-1, 1] == "/"
+      url = self.url
+      reference_url = reference_url.sub(/\Ahttps?:\/\/[^\/]+/, "")
+      url = url.sub(/\Ahttps?:\/\/[^\/]+/, "")
+      url[reference_url.length..-1]
+    end
+
     # Returns a key that can be used to retrieve this object later on using {Connection#find_by_key}
     # @return [String]
     def key

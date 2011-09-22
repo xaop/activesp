@@ -57,32 +57,21 @@ module ActiveSP
       attributes_before_type_cast1["RootFolder"]
     end
     
-    %w[AllowAnonymousAccess AnonymousViewListItems BaseTemplate InheritedSecurity LastModified LastModifiedForceRecrawl ValidSecurityInfo Author].each do |attribute|
-      eval <<-RUBY
-        def #{attribute}
-          
-        end
-      RUBY
-    end
-    
     # The URL of the list
     # @return [String]
     def url
       URL(@site.url).join(self.RootFolder).to_s
-      # # Dirty. Used to use RootFolder, but if you get the data from the bulk calls, RootFolder is the empty
-      # # string rather than what it should be. That's what you get with web services as an afterthought I guess.
-      # view_url = ::File.dirname(attributes["DefaultViewUrl"])
-      # result = URL(@site.url).join(view_url).to_s
-      # if ::File.basename(result) == "Forms" and dir = ::File.dirname(result) and dir.length > @site.url.length
-      #   result = dir
-      # end
-      # result
     end
     cache :url
     
     # @private
-    def relative_url
-      @site.relative_url(url)
+    def relative_url(site = @site.connection.root)
+      reference_url = site.url
+      reference_url += "/" unless reference_url[-1, 1] == "/"
+      url = self.url
+      reference_url = reference_url.sub(/\Ahttps?:\/\/[^\/]+/, "")
+      url = url.sub(/\Ahttps?:\/\/[^\/]+/, "")
+      url[reference_url.length..-1]
     end
     
     # See {Base#key}
