@@ -48,7 +48,7 @@ module ActiveSP
     # Returns the list of users in the system
     # @return [Array<User>]
     def users
-      root.send(:call, "UserGroup", "get_user_collection_from_site").xpath("//spdir:User", NS).map do |row|
+      root.send(:call, "UserGroup", "GetUserCollectionFromSite").xpath("//spdir:User", NS).map do |row|
         attributes = clean_attributes(row.attributes)
         User.new(root, attributes["LoginName"])
       end

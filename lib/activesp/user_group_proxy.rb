@@ -23,36 +23,22 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-require 'nokogiri'
-require 'time'
-
 module ActiveSP
+  
+  class UserGroupProxy
+    
+    def initialize(blk)
+      @blk = blk
+    end
+    
+    def __user_group
+      @__user_group ||= @blk.call
+    end
+    
+    def method_missing(m, *a, &b)
+      __user_group.send(m, *a, &b)
+    end
+    
+  end
+  
 end
-
-require 'activesp/util'
-require 'activesp/caching'
-require 'activesp/associations'
-require 'activesp/persistent_caching'
-
-require 'activesp/errors'
-
-require 'activesp/base'
-
-require 'activesp/connection'
-require 'activesp/root'
-require 'activesp/site'
-require 'activesp/list'
-require 'activesp/item'
-require 'activesp/folder'
-require 'activesp/url'
-require 'activesp/content_type'
-require 'activesp/field'
-require 'activesp/ghost_field'
-require 'activesp/user'
-require 'activesp/group'
-require 'activesp/user_group_proxy'
-require 'activesp/role'
-require 'activesp/permission_set'
-require 'activesp/file'
-require 'activesp/site_template'
-require 'activesp/list_template'

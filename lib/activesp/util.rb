@@ -122,7 +122,14 @@ module ActiveSP
       result
     end
     
+    # TODO: check if this is still needed
     def create_user_or_group(site, entry)
+      with_user_proxy(site) do
+        create_user_or_group_no_proxy(site, entry)
+      end
+    end
+    
+    def create_user_or_group_no_proxy(site, entry)
       if entry[/\\/]
         User.new(site.connection.root, entry)
       else
@@ -131,8 +138,14 @@ module ActiveSP
     end
     
     def create_user_or_group_by_name(site, name)
+      with_user_proxy(site) do
+        create_user_or_group_by_name_no_proxy(site, name)
+      end
+    end
+    
+    def create_user_or_group_by_name_no_proxy(site, name)
       if /\A\d+\z/ === name
-        create_user_or_group_by_id(site, name)
+        create_user_or_group_by_id_no_proxy(site, name)
       else
         if user = site.connection.users.find { |u| u.attribute("Name") === name }
           User.new(site.connection.root, user.attribute("LoginName"))
@@ -143,10 +156,24 @@ module ActiveSP
     end
     
     def create_user_or_group_by_id(site, id)
+      with_user_proxy(site) do
+        create_user_or_group_by_id_no_proxy(site, id)
+      end
+    end
+    
+    def create_user_or_group_by_id_no_proxy(site, id)
       if user = site.connection.users.find { |u| u.attribute("ID") === id }
         User.new(site.connection.root, user.attribute("LoginName"))
       elsif group = site.connection.groups.find { |g| g.attribute("ID") === id }
         Group.new(site.connection.root, group.attribute("Name"))
+      end
+    end
+    
+    def with_user_proxy(site, &blk)
+      if site.connection.user_group_proxy
+        ::ActiveSP::UserGroupProxy.new(blk)
+      else
+        blk.call
       end
     end
     

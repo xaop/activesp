@@ -101,7 +101,7 @@ module ActiveSP
     
     # @private
     # TODO: create profile
-    attr_reader :login, :password, :auth_type, :root_url, :trace
+    attr_reader :login, :password, :auth_type, :root_url, :trace, :user_group_proxy
     
     # @param [Hash] options The connection options
     # @option options [String] :root The URL of the root site
@@ -115,6 +115,7 @@ module ActiveSP
       @password = options.delete(:password)
       @auth_type = options.delete(:auth_type) || :ntlm
       @trace = options.delete(:trace)
+      @user_group_proxy = options.delete(:user_group_proxy)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       cache = nil
       configure_persistent_cache { |c| cache ||= c }

@@ -46,14 +46,29 @@ module ActiveSP
       @Title = title if title
       # This testing for emptiness of RootFolder is necessary because it is empty
       # in bulk calls.
-      @attributes_before_type_cast1 = attributes_before_type_cast1 if attributes_before_type_cast1 && attributes_before_type_cast1["RootFolder"] != ""
-      @attributes_before_type_cast2 = attributes_before_type_cast2 if attributes_before_type_cast2 && attributes_before_type_cast2["RootFolder"] != ""
+      @attributes_before_type_cast1 = attributes_before_type_cast1 if attributes_before_type_cast1
+      @attributes_before_type_cast2 = attributes_before_type_cast2 if attributes_before_type_cast2
+    end
+    
+    def RootFolder
+      if attributes_before_type_cast1["RootFolder"] == ""
+        clear_cache_for("attributes_before_type_cast1")
+      end
+      attributes_before_type_cast1["RootFolder"]
+    end
+    
+    %w[AllowAnonymousAccess AnonymousViewListItems BaseTemplate InheritedSecurity LastModified LastModifiedForceRecrawl ValidSecurityInfo Author].each do |attribute|
+      eval <<-RUBY
+        def #{attribute}
+          
+        end
+      RUBY
     end
     
     # The URL of the list
     # @return [String]
     def url
-      URL(@site.url).join(attributes["RootFolder"]).to_s
+      URL(@site.url).join(self.RootFolder).to_s
       # # Dirty. Used to use RootFolder, but if you get the data from the bulk calls, RootFolder is the empty
       # # string rather than what it should be. That's what you get with web services as an afterthought I guess.
       # view_url = ::File.dirname(attributes["DefaultViewUrl"])
@@ -388,6 +403,10 @@ module ActiveSP
       ::ActiveSP::List === object && self.ID == object.ID
     end
     
+    def quick_attributes
+      type_cast_attributes(@site, nil, internal_attribute_types, attributes_before_type_cast1)
+    end
+    
   private
     
     def data1
@@ -416,6 +435,7 @@ module ActiveSP
     cache :attributes_before_type_cast2
     
     def original_attributes
+      self.RootFolder
       attrs = attributes_before_type_cast1.merge(attributes_before_type_cast2).merge("BaseType" => attributes_before_type_cast1["BaseType"])
       type_cast_attributes(@site, nil, internal_attribute_types, attrs)
     end

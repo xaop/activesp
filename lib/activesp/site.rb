@@ -251,6 +251,13 @@ module ActiveSP
       @__sites.delete(site) if @__sites
     end
     
+    def quick_attributes
+      {
+        "Name" => self.Name,
+        "Url" => self.Url
+      }
+    end
+    
   private
     
     def call(service, m, *args, &blk)
