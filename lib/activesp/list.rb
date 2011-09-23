@@ -582,7 +582,7 @@ module ActiveSP
         error_code = create_result.xpath("./sp:ErrorCode", NS).first
         error_code &&= error_code.text.to_s
         if error_code == "0x8107090d"
-          raise ActiveSP::AlreadyExists.new(error_text.text.to_s) { item(folder_name) }
+          raise ActiveSP::AlreadyExists.new(error_text.text.to_s) { (folder_object || self).item(folder_name) }
         else
           # Make it look like the error came from soap
           # Alternatively we could wrap all the soap faults maybe

@@ -58,11 +58,11 @@ module ActiveSP
     end
     
     def create_folder(parameters = {})
-      @list.create_folder(parameters.merge(:folder => absolute_url))
+      @list.create_folder(parameters.merge(:folder => absolute_url, :folder_object => self))
     end
     
     def create_folder!(parameters = {})
-      @list.create_folder!(parameters.merge(:folder => absolute_url))
+      @list.create_folder!(parameters.merge(:folder => absolute_url, :folder_object => self))
     end
     
     def each_document(options = {}, &blk)
