@@ -32,7 +32,7 @@ module ActiveSP
     extend Associations
     
     # @private
-    def relative_url(site_or_list = @list.site.connection.root)
+    def relative_url(site_or_list = @list ? @list.site.connection.root : connection.root)
       reference_url = site_or_list.url
       reference_url += "/" unless reference_url[-1, 1] == "/"
       url = self.url
