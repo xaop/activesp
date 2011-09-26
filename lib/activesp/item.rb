@@ -114,7 +114,7 @@ module ActiveSP
     def attachment_urls
       @list.when_list do
         result = call("Lists", "GetAttachmentCollection", "listName" => @list.id, "listItemID" => @id)
-        return result.xpath("//sp:Attachment", NS).map { |att| att.text }
+        return result.xpath("//sp:Attachment", NS).map { |att| att.text.gsub(/ /, "%20") }
       end
       @list.when_document_library { raise TypeError, "a document library does not support attachments" }
       @list.raise_on_unknown_type
@@ -122,7 +122,6 @@ module ActiveSP
     cache :attachment_urls, :dup => :always
     
     # Yields each attachment as a ActiveSP::File object.
-    # 
     def each_attachment
       attachment_urls.each { |url| yield ActiveSP::File.new(self, url, true) }
     end
