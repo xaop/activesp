@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.files += Dir['lib/**/*.rb']
   # s.bindir = "bin"
   # s.executables.push(*(Dir['bin/*.rb']))
-  s.add_dependency('savon', '~> 0.9.2')
+  s.add_dependency('savon', '= 1.0.0')
   s.add_dependency('curb')
   s.add_dependency('httpi', '= 0.9.4')
   # s.rdoc_options << '--exclude' << 'ext' << '--main' << 'README'
