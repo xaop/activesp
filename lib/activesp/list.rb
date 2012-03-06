@@ -203,6 +203,7 @@ module ActiveSP
     def changes_since_token(token, options = {})
       options = options.dup
       no_preload = options.delete(:no_preload)
+      row_limit = options.delete(:row_limit).try(:to_s)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       
       if no_preload
@@ -213,9 +214,9 @@ module ActiveSP
         view_fields = Builder::XmlMarkup.new.ViewFields
       end
       if token
-        result = call("Lists", "GetListItemChangesSinceToken", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields)
+        result = call("Lists", "GetListItemChangesSinceToken", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields, 'rowLimit' => row_limit)
       else
-        result = call("Lists", "GetListItemChangesSinceToken", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'viewFields' => view_fields)
+        result = call("Lists", "GetListItemChangesSinceToken", "listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'viewFields' => view_fields, 'rowLimit' => row_limit)
       end
       updates = []
       result.xpath("//z:row", NS).each do |row|
@@ -506,8 +507,10 @@ module ActiveSP
     end
     cache :permissions, :dup => :always
     
-    def get_list_items(view_fields, query_options, query)
-      result = call("Lists", "GetListItems", { "listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options }.merge(query))
+    def get_list_items(view_fields, query_options, query, options = {})
+      options = options.dup
+      row_limit = options.delete(:row_limit).try(:to_s)
+      result = call("Lists", "GetListItems", {"listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options, "rowLimit" => row_limit}.merge(query))
       result.xpath("//z:row", NS).each do |row|
         yield clean_item_attributes(row.attributes)
       end
