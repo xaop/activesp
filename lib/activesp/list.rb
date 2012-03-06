@@ -203,7 +203,7 @@ module ActiveSP
     def changes_since_token(token, options = {})
       options = options.dup
       no_preload = options.delete(:no_preload)
-      row_limit = options.delete(:row_limit).try(:to_s)
+      row_limit = (r_l = options.delete(:row_limit)) ? r_l.to_s : nil
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       
       if no_preload
@@ -509,7 +509,7 @@ module ActiveSP
     
     def get_list_items(view_fields, query_options, query, options = {})
       options = options.dup
-      row_limit = options.delete(:row_limit).try(:to_s)
+      row_limit = (r_l = options.delete(:row_limit)) ? r_l.to_s : nil
       result = call("Lists", "GetListItems", {"listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options, "rowLimit" => row_limit}.merge(query))
       result.xpath("//z:row", NS).each do |row|
         yield clean_item_attributes(row.attributes)
