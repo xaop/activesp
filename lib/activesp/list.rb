@@ -214,7 +214,7 @@ module ActiveSP
         view_fields = Builder::XmlMarkup.new.ViewFields
       end
       if token
-        result = call("Lists", "GetListItemChangesSinceToken", {"listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields}.merge(ro    w_limit))
+        result = call("Lists", "GetListItemChangesSinceToken", {"listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'changeToken' => token, 'viewFields' => view_fields}.merge(row_limit))
       else
         result = call("Lists", "GetListItemChangesSinceToken", {"listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'viewFields' => view_fields}.merge(row_limit))
       end
