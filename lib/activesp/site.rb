@@ -363,20 +363,23 @@ module ActiveSP
         @client = Savon::Client.new do |wsdl, http|
           wsdl.document = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
           if site.connection.login
-            case site.connection.auth_type
+            auth_type = site.connection.auth_type
+            login = site.connection.login
+            password = site.connection.password
+            wsdl.authenticate(:method => auth_type, :usename => login, :password => password)
+            case auth_type
             when :ntlm
-              http.auth.ntlm(site.connection.login, site.connection.password)
+              http.auth.ntlm(login, password)
             when :basic
-              http.auth.basic(site.connection.login, site.connection.password)
+              http.auth.basic(login, password)
             when :digest
-              http.auth.digest(site.connection.login, site.connection.password)
+              http.auth.digest(login, password)
             when :gss_negotiate
-              http.auth.gssnegotiate(site.connection.login, site.connection.password)
+              http.auth.gssnegotiate(login, password)
             else
               raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
             end
           end
-          
         end
       end
       

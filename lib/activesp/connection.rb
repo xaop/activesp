@@ -24,6 +24,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 require 'savon'
+require 'activesp/wasabi_authentication'
 require 'net/ntlm_http'
 
 Savon.configure do |config|
