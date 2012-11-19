@@ -510,7 +510,7 @@ module ActiveSP
     def get_list_items(view_fields, query_options, query, options = {})
       options = options.dup
       row_limit = (r_l = options.delete(:row_limit)) ? {'rowLimit' => r_l.to_s} : {}
-      result = call("Lists", "GetListItems", {"listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options, "rowLimit" => row_limit}.merge(query).merge(row_limit))
+      result = call("Lists", "GetListItems", {"listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options}.merge(query).merge(row_limit))
       result.xpath("//z:row", NS).each do |row|
         yield clean_item_attributes(row.attributes)
       end
