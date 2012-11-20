@@ -204,6 +204,7 @@ module ActiveSP
       options = options.dup
       no_preload = options.delete(:no_preload)
       row_limit = (r_l = options.delete(:row_limit)) ? {'rowLimit' => r_l.to_s} : {}
+      only_attrs = options.delete(:only_attrs)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       
       if no_preload
@@ -221,7 +222,13 @@ module ActiveSP
       updates = []
       result.xpath("//z:row", NS).each do |row|
         attributes = clean_item_attributes(row.attributes)
-        updates << construct_item(:unset, attributes, no_preload ? nil : attributes)
+        all_attrs = only_attrs ? only_attrs.inject({}) do |h, a|
+          if attributes.has_key?(a)
+            h[a] = attributes[a]
+          end
+          h
+        end : attributes
+        updates << construct_item(:unset, attributes, no_preload ? nil : all_attrs)
       end
       deletes = []
       result.xpath("//sp:Changes/sp:Id", NS).each do |row|

@@ -58,7 +58,7 @@ module ActiveSP
             else
               v = Time.xmlschema(v.sub(/ /, "T"))
             end
-          when "Computed", "Text", "Guid", "ContentTypeId", "URL"
+          when "Computed", "Text", "Guid", "ContentTypeId", "URL", "Calculated"
           when "Integer", "Counter", "Attachments"
             v = v && v != "" ? Integer(v) : nil
           when "ModStat" # 0
@@ -68,7 +68,7 @@ module ActiveSP
             v = v == "1"
           when "Bool"
             v = !!v[/true/i]
-          when "File"
+          when "File", "TaxonomyFieldType"
             v = v.sub(/\A\d+;#/, "")
           when "Note"
           
@@ -79,11 +79,11 @@ module ActiveSP
             v = create_user_or_group_by_name(site, v)
           when "UserMulti"
             d = split_multi(v)
-            v = (0...(d.length / 4)).map { |i| create_user_or_group(site, d[4 * i + 2]) }
+            v = (0...(d.length / 4)).map { |i| create_user_or_group_by_name(site, d[4 * i + 2]) }
           
           when "Choice"
             # For some reason there is no encoding here
-          when "MultiChoice"
+          when "MultiChoice", "TaxonomyFieldTypeMulti"
             # SharePoint disallows ;# inside choices and starts with a ;#
             v = v.split(/;#/)[1..-1]
           
@@ -104,7 +104,7 @@ module ActiveSP
           when "ThreadIndex"
             
           else
-            # raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
+            # raise NotImplementedError, "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect}"
             # Note: can't print self if it needs the attributes to be loaded, so just display the class
             # warn "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on #{self.class}"
           end
@@ -148,9 +148,9 @@ module ActiveSP
         create_user_or_group_by_id_no_proxy(site, name)
       else
         if user = site.connection.users.find { |u| u.attribute("Name") === name }
-          User.new(site.connection.root, user.attribute("LoginName"))
-        elsif group = site.connection.groups.find { |g| g.attribute("Name") === name }
-          Group.new(site.connection.root, name)
+          user
+        elsif group = site.connection.group(name)
+          group
         end
       end
     end
@@ -163,9 +163,9 @@ module ActiveSP
     
     def create_user_or_group_by_id_no_proxy(site, id)
       if user = site.connection.users.find { |u| u.attribute("ID") === id }
-        User.new(site.connection.root, user.attribute("LoginName"))
+        user
       elsif group = site.connection.groups.find { |g| g.attribute("ID") === id }
-        Group.new(site.connection.root, group.attribute("Name"))
+        group
       end
     end
     

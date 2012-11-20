@@ -50,7 +50,7 @@ module ActiveSP
     def users
       root.send(:call, "UserGroup", "GetUserCollectionFromSite").xpath("//spdir:User", NS).map do |row|
         attributes = clean_attributes(row.attributes)
-        User.new(root, attributes["LoginName"])
+        User.new(root, attributes["LoginName"], attributes)
       end
     end
     cache :users, :dup => :always
