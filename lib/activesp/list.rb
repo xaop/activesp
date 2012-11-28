@@ -244,7 +244,7 @@ module ActiveSP
       data1.xpath("//sp:Field", NS).map do |field|
         attributes = clean_attributes(field.attributes)
         if attributes["ID"] && attributes["StaticName"]
-          Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], @site.field(attributes["ID"].downcase), attributes)
+          Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], @site.field(attributes["ID"].downcase), attributes, extract_custom_props(field))
         end
       end.compact
     end

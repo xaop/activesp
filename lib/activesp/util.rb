@@ -411,6 +411,14 @@ module ActiveSP
     def escape_xml(xml)
       Builder::XmlMarkup.new.s(xml).scan(/\A<s>(.*)<\/s>\z/)
     end
+
+    def extract_custom_props(field)
+      clean_attributes(field.xpath("./sp:Customization//sp:Property", NS).map do |prop|
+        name = prop.xpath("./sp:Name", NS).first
+        value = prop.xpath("./sp:Value", NS).first
+        [name.text, value.text] if name && value
+      end.compact)
+    end
     
   end
   
