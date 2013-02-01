@@ -68,7 +68,7 @@ module ActiveSP
             v = v == "1"
           when "Bool"
             v = !!v[/true/i]
-          when "File", "TaxonomyFieldType"
+          when "File"
             v = v.sub(/\A\d+;#/, "")
           when "Note"
           
@@ -83,7 +83,7 @@ module ActiveSP
           
           when "Choice"
             # For some reason there is no encoding here
-          when "MultiChoice", "TaxonomyFieldTypeMulti"
+          when "MultiChoice"
             # SharePoint disallows ;# inside choices and starts with a ;#
             v = v.split(/;#/)[1..-1]
           
@@ -101,6 +101,14 @@ module ActiveSP
             else
               v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
             end
+          when "TaxonomyFieldType"
+            d = split_multi(v)
+            # TODO: lookup translated values in metadata store?
+            v = d[2]
+          when "TaxonomyFieldTypeMulti"
+            d = split_multi(v)
+            # TODO: lookup translated values in metadata store?
+            v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
           when "ThreadIndex"
             
           else
