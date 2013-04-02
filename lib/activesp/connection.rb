@@ -176,12 +176,7 @@ module ActiveSP
     # @param [String] url The URL to fetch
     # @return [String] The content fetched from the URL
     def fetch(url)
-      # TODO: support HTTPS too
-      @open_params ||= begin
-        u = URL(@root_url)
-        [u.host, u.port]
-      end
-      url = "http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+      url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       if login
         case auth_type
@@ -201,12 +196,7 @@ module ActiveSP
     end
     
     def head(url)
-      # TODO: support HTTPS too
-      @open_params ||= begin
-        u = URL(@root_url)
-        [u.host, u.port]
-      end
-      url = "http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+      url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       if login
         case auth_type
@@ -223,6 +213,20 @@ module ActiveSP
         end
       end
       HTTPI.head(request).headers
+    end
+
+    def open_params
+      @open_params ||= begin
+        u = URL(@root_url)
+        [u.host, u.port]
+      end
+    end
+
+    def protocol
+      @protocol ||= begin
+        u = URL(@root_url)
+        u.protocol
+      end
     end
     
   end
