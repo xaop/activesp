@@ -271,6 +271,14 @@ module ActiveSP
         end
       when "ListReference"
         ActiveSP::List === value and value or raise ArgumentError, "wrong type for #{field.Name} attribute"
+      when "TaxonomyFieldType"
+        d = split_multi(value)
+        # TODO: lookup translated values in metadata store?
+        d[2]
+      when "TaxonomyFieldTypeMulti"
+        d = split_multi(value)
+        # TODO: lookup translated values in metadata store?
+        (0...(d.length / 4)).map { |i| d[4 * i + 2] }
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
