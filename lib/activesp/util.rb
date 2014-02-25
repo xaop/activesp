@@ -271,18 +271,6 @@ module ActiveSP
         end
       when "ListReference"
         ActiveSP::List === value and value or raise ArgumentError, "wrong type for #{field.Name} attribute"
-      when "TaxonomyFieldType"
-        if value
-          d = split_multi(value)
-          # TODO: lookup translated values in metadata store?
-          d[2]
-        end
-      when "TaxonomyFieldTypeMulti"
-        if value
-          d = split_multi(value)
-          # TODO: lookup translated values in metadata store?
-          (0...(d.length / 4)).map { |i| d[4 * i + 2] }
-        end
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
@@ -336,18 +324,6 @@ module ActiveSP
             end
           when "ListReference"
             v = v.ID
-          when "TaxonomyFieldType"
-            if v
-              d = split_multi(v)
-              # TODO: lookup translated values in metadata store?
-              v =d[2]
-            end
-          when "TaxonomyFieldTypeMulti"
-            if v
-              d = split_multi(v)
-              # TODO: lookup translated values in metadata store?
-              v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
-            end
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end
@@ -442,6 +418,14 @@ module ActiveSP
     # Somewhat dirty
     def escape_xml(xml)
       Builder::XmlMarkup.new.s(xml).scan(/\A<s>(.*)<\/s>\z/)
+    end
+
+    def extract_custom_props(field)
+      clean_attributes(field.xpath("./sp:Customization//sp:Property", NS).map do |prop|
+        name = prop.xpath("./sp:Name", NS).first
+        value = prop.xpath("./sp:Value", NS).first
+        [name.text, value.text] if name && value
+      end.compact)
     end
     
   end

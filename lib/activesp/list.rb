@@ -101,6 +101,7 @@ module ActiveSP
       # query = { "query" => options.delete(:query) || "<Query><Where></Where></Query>" }
       query = { "query" => options.delete(:query) || "" }
       no_preload = options.delete(:no_preload)
+      row_limit = options.delete(:row_limit)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       query_options = Builder::XmlMarkup.new.QueryOptions do |xml|
         xml.Folder(folder == :all ? "" : folder.url) if folder
@@ -109,11 +110,11 @@ module ActiveSP
         view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
           %w[FSObjType ID UniqueId ServerUrl].each { |f| xml.FieldRef("Name" => f) }
         end
-        get_list_items(view_fields, query_options, query) do |attributes|
+        get_list_items(view_fields, query_options, query, {:row_limit => row_limit}) do |attributes|
           yield construct_item(folder, attributes, nil)
         end
       else
-        __each_item(query_options, query) do |attributes|
+        __each_item(query_options, query, {:row_limit => row_limit}) do |attributes|
           yield construct_item(folder, attributes, attributes)
         end
       end
@@ -244,7 +245,7 @@ module ActiveSP
       data1.xpath("//sp:Field", NS).map do |field|
         attributes = clean_attributes(field.attributes)
         if attributes["ID"] && attributes["StaticName"]
-          Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], @site.field(attributes["ID"].downcase), attributes)
+          Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], @site.field(attributes["ID"].downcase), attributes, extract_custom_props(field))
         end
       end.compact
     end
@@ -352,8 +353,8 @@ module ActiveSP
     end
     
     # @private
-    def __each_item(query_options, query)
-      get_list_items("<ViewFields></ViewFields>", query_options, query) do |attributes|
+    def __each_item(query_options, query, options = {})
+      get_list_items("<ViewFields></ViewFields>", query_options, query, options) do |attributes|
         yield attributes
       end
     rescue Savon::SOAP::Fault => e
@@ -372,7 +373,7 @@ module ActiveSP
               fields[lo..hi].each { |f| xml.FieldRef("Name" => f) }
             end
             by_id = {}
-            get_list_items(view_fields, query_options, query) do |attributes|
+            get_list_items(view_fields, query_options, query, options) do |attributes|
               by_id[attributes["ID"]] = attributes
             end
             parts << by_id
