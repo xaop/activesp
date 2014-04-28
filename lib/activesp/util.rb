@@ -59,6 +59,8 @@ module ActiveSP
               v = Time.xmlschema(v.sub(/ /, "T"))
             end
           when "Computed", "Text", "Guid", "ContentTypeId", "URL", "Calculated"
+          when "Note"
+            v = v.split(";")
           when "Integer", "Counter", "Attachments"
             v = v && v != "" ? Integer(v) : nil
           when "ModStat" # 0
@@ -70,8 +72,6 @@ module ActiveSP
             v = !!v[/true/i]
           when "File"
             v = v.sub(/\A\d+;#/, "")
-          when "Note"
-          
           when "User"
             d = split_multi(v)
             v = create_user_or_group_by_name(site, d[2])
@@ -187,8 +187,14 @@ module ActiveSP
     
     def type_check_attribute(field, value, override_restrictions)
       case field.internal_type
-      when "Text", "File", "Note", "URL", "Choice"
+      when "Text", "File", "URL", "Choice", "TaxonomyFieldType"
         value.to_s
+      when "Note", "TaxonomyFieldTypeMulti"
+        begin
+          value = Array(value)
+        rescue Exception
+          raise ArgumentError, "wrong type for #{field.Name} attribute"
+        end
       when "Bool", "Boolean"
         !!value
       when "Integer"
@@ -295,7 +301,11 @@ module ActiveSP
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
           case field.internal_type
-          when "Text", "File", "Note", "URL", "Choice"
+          when "Text", "File", "URL", "Choice", "TaxonomyFieldType"
+          when "Note"
+            v = v.join(";")
+          when "TaxonomyFieldTypeMulti"
+            v = v.empty? ? ";#" : v.join(";#")
           when "Bool"
             v = v ? "TRUE" : "FALSE"
           when "Boolean"
