@@ -189,9 +189,15 @@ module ActiveSP
       case field.internal_type
       when "Text", "File", "URL", "Choice", "TaxonomyFieldType"
         value.to_s
-      when "Note", "TaxonomyFieldTypeMulti"
+      when "Note"
         begin
           value = Array(value)
+        rescue Exception
+          raise ArgumentError, "wrong type for #{field.Name} attribute"
+        end
+      when "TaxonomyFieldTypeMulti"
+        begin
+          value = (a = Array(value)).empty? ? ";#" : a
         rescue Exception
           raise ArgumentError, "wrong type for #{field.Name} attribute"
         end
@@ -305,7 +311,9 @@ module ActiveSP
           when "Note"
             v = v.join(";")
           when "TaxonomyFieldTypeMulti"
-            v = v.empty? ? ";#" : v.join(";#")
+            unless v == ";#"
+              v = v.join(";#")
+            end
           when "Bool"
             v = v ? "TRUE" : "FALSE"
           when "Boolean"
