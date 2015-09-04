@@ -24,12 +24,71 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 require 'savon'
+require 'activesp/wasabi_authentication'
 require 'net/ntlm_http'
 
-Savon::Request.logger.level = Logger::ERROR
+Savon.configure do |config|
+  config.log = false
+end
 
-Savon::Response.error_handler do |soap_fault|
-  soap_fault[:detail][:errorstring]
+HTTPI.log = false
+
+HTTPI.adapter = :curb
+
+class Savon::SOAP::Fault
+  
+  def error_code
+    Integer(((to_hash[:fault] || {})[:detail] || {})[:errorcode] || 0)
+  end
+  
+  def error_string
+    ((to_hash[:fault] || {})[:detail] || {})[:errorstring]
+  end
+  
+end
+
+class HTTPI::Auth::Config
+  
+  # Accessor for the GSSNEGOTIATE auth credentials.
+  def gssnegotiate(*args)
+    return @gssnegotiate if args.empty?
+    
+    self.type = :gssnegotiate
+    @gssnegotiate = args.flatten.compact
+  end
+  
+  # Returns whether to use GSSNEGOTIATE auth.
+  def gssnegotiate?
+    type == :gssnegotiate
+  end
+  
+end
+
+class HTTPI::Adapter::Curb
+  
+  def setup_client(request)
+    basic_setup request
+    setup_http_auth request if request.auth.http?
+    setup_ssl_auth request.auth.ssl if request.auth.ssl?
+    setup_ntlm_auth request if request.auth.ntlm?
+    setup_gssnegotiate_auth request if request.auth.gssnegotiate?
+  end
+  
+  def setup_gssnegotiate_auth(request)
+    client.username, client.password = *request.auth.credentials
+    client.http_auth_types = request.auth.type
+  end
+  
+end
+
+# This is because setting the cookie causes problems on SP 2011
+class Savon::Client
+  
+private
+  
+  def set_cookie(headers)
+  end
+  
 end
 
 module ActiveSP
@@ -43,7 +102,7 @@ module ActiveSP
     
     # @private
     # TODO: create profile
-    attr_reader :login, :password, :auth_type, :root_url, :trace
+    attr_reader :login, :password, :auth_type, :root_url, :trace, :user_group_proxy
     
     # @param [Hash] options The connection options
     # @option options [String] :root The URL of the root site
@@ -57,6 +116,7 @@ module ActiveSP
       @password = options.delete(:password)
       @auth_type = options.delete(:auth_type) || :ntlm
       @trace = options.delete(:trace)
+      @user_group_proxy = options.delete(:user_group_proxy)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
       cache = nil
       configure_persistent_cache { |c| cache ||= c }
@@ -95,6 +155,15 @@ module ActiveSP
         else
           ActiveSP::ContentType.new(parent, nil, trail[1])
         end
+      when ?M
+        case type[1]
+        when ?S
+          site_template(trail[0])
+        when ?L
+          list_template(trail[0].to_i)
+        else
+          raise "not yet #{key.inspect}"
+        end
       else
         raise "not yet #{key.inspect}"
       end
@@ -107,54 +176,56 @@ module ActiveSP
     # @param [String] url The URL to fetch
     # @return [String] The content fetched from the URL
     def fetch(url)
-      # TODO: support HTTPS too
-      @open_params ||= begin
-        u = URL(@root_url)
-        [u.host, u.port]
-      end
-      Net::HTTP.start(*@open_params) do |http|
-        request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
-        if @login
-          case auth_type
-          when :ntlm
-            request.ntlm_auth(@login, @password)
-          when :basic
-            request.basic_auth(@login, @password)
-          else
-            raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-          end
+      url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+      request = HTTPI::Request.new(url)
+      if login
+        case auth_type
+        when :ntlm
+          request.auth.ntlm(login, password)
+        when :basic
+          request.auth.basic(login, password)
+        when :digest
+          request.auth.digest(login, password)
+        when :gss_negotiate
+          request.auth.gssnegotiate(login, password)
+        else
+          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
         end
-        response = http.request(request)
-        # if Net::HTTPFound === response
-        #   response = fetch(response["location"])
-        # end
-        # response
       end
+      HTTPI.get(request)
     end
     
     def head(url)
-      # TODO: support HTTPS too
+      url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+      request = HTTPI::Request.new(url)
+      if login
+        case auth_type
+        when :ntlm
+          request.auth.ntlm(login, password)
+        when :basic
+          request.auth.basic(login, password)
+        when :digest
+          request.auth.digest(login, password)
+        when :gss_negotiate
+          request.auth.gssnegotiate(login, password)
+        else
+          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+        end
+      end
+      HTTPI.head(request).headers
+    end
+
+    def open_params
       @open_params ||= begin
         u = URL(@root_url)
         [u.host, u.port]
       end
-      Net::HTTP.start(*@open_params) do |http|
-        request = Net::HTTP::Head.new(URL(url).full_path.gsub(/ /, "%20"))
-        if @login
-          case auth_type
-          when :ntlm
-            request.ntlm_auth(@login, @password)
-          when :basic
-            request.basic_auth(@login, @password)
-          else
-            raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-          end
-        end
-        response = http.request(request)
-        # if Net::HTTPFound === response
-        #   response = fetch(response["location"])
-        # end
-        # response
+    end
+
+    def protocol
+      @protocol ||= begin
+        u = URL(@root_url)
+        u.protocol
       end
     end
     

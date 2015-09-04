@@ -47,7 +47,7 @@ module ActiveSP
     # Returns the list of users in this group
     # @return [User]
     def users
-      call("UserGroup", "get_user_collection_from_group", "groupName" => @name).xpath("//spdir:User", NS).map do |row|
+      call("UserGroup", "GetUserCollectionFromGroup", "groupName" => @name).xpath("//spdir:User", NS).map do |row|
         attributes = clean_attributes(row.attributes)
         User.new(@site, attributes["LoginName"])
       end
@@ -64,7 +64,7 @@ module ActiveSP
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, false)
     end
     
     # @private
@@ -78,7 +78,7 @@ module ActiveSP
   private
     
     def data
-      call("UserGroup", "get_group_info", "groupName" => @name).xpath("//spdir:Group", NS).first
+      call("UserGroup", "GetGroupInfo", "groupName" => @name).xpath("//spdir:Group", NS).first
     end
     cache :data
     

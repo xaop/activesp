@@ -30,6 +30,7 @@ module ActiveSP
     include InSite
     extend Caching
     include Util
+    extend Util
     
     # @private
     attr_reader :ID, :Name, :internal_type
@@ -78,7 +79,7 @@ module ActiveSP
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, false)
     end
     
     # @private
@@ -88,6 +89,15 @@ module ActiveSP
     
     # @private
     alias inspect to_s
+    
+    def self.check_attributes_for_creation(site, attributes)
+      name = attributes.delete("Name") or raise ArgumentError, "wrong type for Name attribute"
+      name = name.to_s
+      type = attributes.delete("internal_type") or raise ArgumentError, "wrong type for Name attribute"
+      %[DateTime XMLDateTime Computed Text Guid ContentTypeId URL Integer Counter Attachments ModStat Number Bool File Note User InternalUser UserMulti Choice MultiChoice Lookup LookupMulti ThreadIndex].include?(type) or raise ArgumentError, "illegal value for internal_type attribute"
+      attributes = type_check_attributes_for_creation(internal_attribute_types, attributes, false).merge("Name" => name, "Type" => type)
+      untype_cast_attributes(site, nil, internal_attribute_types, attributes, false)
+    end
     
   private
     
@@ -107,7 +117,7 @@ module ActiveSP
       @original_attributes ||= type_cast_attributes(@site, nil, internal_attribute_types, @attributes_before_type_cast.merge("List" => list_for_lookup, "Type" => self.Type, "internal_type" => internal_type))
     end
     
-    def internal_attribute_types
+    def self.internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowDeletion" => GhostField.new("AllowDeletion", "Bool", false, true),
         "AppendOnly" => GhostField.new("AppendOnly", "Bool", false, true),
@@ -116,23 +126,24 @@ module ActiveSP
         "CanToggleHidden" => GhostField.new("CanToggleHidden", "Bool", false, true),
         "ClassInfo" => GhostField.new("ClassInfo", "Text", false, true),
         "ColName" => GhostField.new("ColName", "Text", false, true),
-        "Description" => GhostField.new("Description", "Text", false, true),
+        "Description" => GhostField.new("Description", "Text", false, false),
         "Dir" => GhostField.new("Dir", "Text", false, true),
         "DisplaceOnUpgrade" => GhostField.new("DisplaceOnUpgrade", "Bool", false, true),
         "DisplayImage" => GhostField.new("DisplayImage", "Text", false, true),
-        "DisplayName" => GhostField.new("DisplayName", "Text", false, true),
+        "DisplayName" => GhostField.new("DisplayName", "Text", false, false),
         "DisplayNameSrcField" => GhostField.new("DisplayNameSrcField", "Text", false, true),
         "DisplaySize" => GhostField.new("DisplaySize", "Integer", false, true),
         "ExceptionImage" => GhostField.new("ExceptionImage", "Text", false, true),
         "FieldRef" => GhostField.new("FieldRef", "Text", false, true),
         "FillInChoice" => GhostField.new("FillInChoice", "Bool", false, true),
-        "Filterable" => GhostField.new("Filterable", "Bool", false, true),
-        "Format" => GhostField.new("Format", "Bool", false, true),
-        "FromBaseType" => GhostField.new("FromBaseType", "Bool", false, true),
+        "Filterable" => GhostField.new("Filterable", "Bool", false, false),
+        "FilterableNoRecurrence" => GhostField.new("FilterableNoRecurrence", "Bool", false, false),
+        "Format" => GhostField.new("Format", "Bool", false, false),
+        "FromBaseType" => GhostField.new("FromBaseType", "Bool", false, false),
         "Group" => GhostField.new("Group", "Text", false, true),
         "HeaderImage" => GhostField.new("HeaderImage", "Text", false, true),
         "Height" => GhostField.new("Height", "Integer", false, true),
-        "Hidden" => GhostField.new("Hidden", "Bool", false, true),
+        "Hidden" => GhostField.new("Hidden", "Bool", false, false),
         "ID" => GhostField.new("ID", "Text", false, true),
         "IMEMode" => GhostField.new("IMEMode", "Text", false, true),
         "internal_type" => GhostField.new("internal_type", "Text", false, true),
@@ -140,15 +151,15 @@ module ActiveSP
         "JoinColName" => GhostField.new("JoinColName", "Text", false, true),
         "JoinRowOrdinal" => GhostField.new("JoinRowOrdinal", "Integer", false, true),
         "JoinType" => GhostField.new("JoinType", "Text", false, true),
-        "List" => GhostField.new("List", "ListReference", false, true),
+        "List" => GhostField.new("List", "ListReference", false, false),
         "Max" => GhostField.new("Max", "Integer", false, true),
         "MaxLength" => GhostField.new("MaxLength", "Integer", false, true),
         "Min" => GhostField.new("Min", "Integer", false, true),
         "Mult" => GhostField.new("Mult", "Bool", false, true),
         "Name" => GhostField.new("Name", "Text", false, true),
-        "Node" => GhostField.new("Node", "Text", false, true),
+        "Node" => GhostField.new("Node", "Text", false, false),
         "NoEditFormBreak" => GhostField.new("NoEditFormBreak", "Bool", false, true),
-        "NumLines" => GhostField.new("NumLines", "Text", false, true),
+        "NumLines" => GhostField.new("NumLines", "Text", false, false),
         "Percentage" => GhostField.new("Percentage", "Bool", false, true),
         "PIAttribute" => GhostField.new("PIAttribute", "Text", false, true),
         "PITarget" => GhostField.new("PITarget", "Text", false, true),
@@ -156,20 +167,20 @@ module ActiveSP
         "PrimaryKey" => GhostField.new("PrimaryKey", "Bool", false, true),
         "PrimaryPIAttribute" => GhostField.new("PrimaryPIAttribute", "Text", false, true),
         "PrimaryPITarget" => GhostField.new("PrimaryPITarget", "Text", false, true),
-        "ReadOnly" => GhostField.new("ReadOnly", "Bool", false, true),
+        "ReadOnly" => GhostField.new("ReadOnly", "Bool", false, false),
         "ReadOnlyEnforced" => GhostField.new("ReadOnlyEnforced", "Bool", false, true),
         "RenderXMLUsingPattern" => GhostField.new("ReadOnly", "Bool", false, true),
-        "Required" => GhostField.new("Required", "Bool", false, true),
+        "Required" => GhostField.new("Required", "Bool", false, false),
         "RestrictedMode" => GhostField.new("RestrictedMode", "Bool", false, true),
         "RichText" => GhostField.new("RichText", "Bool", false, true),
         "RichTextMode" => GhostField.new("RichTextMode", "Text", false, true),
         "RowOrdinal" => GhostField.new("RowOrdinal", "Integer", false, true),
-        "Sealed" => GhostField.new("Sealed", "Bool", false, true),
-        "ShowInDisplayForm" => GhostField.new("ShowInDisplayForm", "Bool", false, true),
-        "ShowInListSettings" => GhostField.new("ShowInListSettings", "Bool", false, true),
-        "ShowInFileDlg" => GhostField.new("ShowInFileDlg", "Bool", false, true),
+        "Sealed" => GhostField.new("Sealed", "Bool", false, false),
+        "ShowInDisplayForm" => GhostField.new("ShowInDisplayForm", "Bool", false, false),
+        "ShowInListSettings" => GhostField.new("ShowInListSettings", "Bool", false, false),
+        "ShowInFileDlg" => GhostField.new("ShowInFileDlg", "Bool", false, false),
         "ShowInVersionHistory" => GhostField.new("ShowInVersionHistory", "Bool", false, true),
-        "Sortable" => GhostField.new("Sortable", "Bool", false, true),
+        "Sortable" => GhostField.new("Sortable", "Bool", false, false),
         "SourceID" => GhostField.new("SourceID", "Text", false, true),
         "StaticName" => GhostField.new("StaticName", "Text", false, true),
         "StorageTZ" => GhostField.new("StorageTZ", "Bool", false, true),
@@ -177,9 +188,9 @@ module ActiveSP
         "Title" => GhostField.new("Title", "Text", false, true),
         "Type" => GhostField.new("Type", "Text", false, true),
         "SetAs" => GhostField.new("SetAs", "Text", false, true),
-        "ShowField" => GhostField.new("ShowField", "Text", false, true),
-        "ShowInEditForm" => GhostField.new("ShowInEditForm", "Bool", false, true),
-        "ShowInNewForm" => GhostField.new("ShowInNewForm", "Bool", false, true),
+        "ShowField" => GhostField.new("ShowField", "Text", false, false),
+        "ShowInEditForm" => GhostField.new("ShowInEditForm", "Bool", false, false),
+        "ShowInNewForm" => GhostField.new("ShowInNewForm", "Bool", false, false),
         "UnlimitedLengthInDocumentLibrary" => GhostField.new("UnlimitedLengthInDocumentLibrary", "Bool", false, true),
         "Version" => GhostField.new("Version", "Integer", false, true),
         "Width" => GhostField.new("Width", "Integer", false, true),
@@ -188,6 +199,14 @@ module ActiveSP
       }
     end
     
+    def internal_attribute_types
+      self.class.internal_attribute_types
+    end
+    
   end
   
 end
+
+__END__
+
+Reference of attributes for fields: http://msdn.microsoft.com/en-us/library/aa543225.aspx

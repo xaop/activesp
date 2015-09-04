@@ -106,7 +106,7 @@ module ActiveSP
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, false)
     end
     
     # @private
@@ -121,9 +121,9 @@ module ActiveSP
     
     def data
       if @list
-        call("Lists", "get_list_content_type", "listName" => @list.id, "contentTypeId" => @id).xpath("//sp:ContentType", NS).first
+        call("Lists", "GetListContentType", "listName" => @list.id, "contentTypeId" => @id).xpath("//sp:ContentType", NS).first
       else
-        call("Webs", "get_content_type", "contentTypeId" => @id).xpath("//sp:ContentType", NS).first
+        call("Webs", "GetContentType", "contentTypeId" => @id).xpath("//sp:ContentType", NS).first
       end
     end
     cache :data

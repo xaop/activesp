@@ -51,7 +51,7 @@ module ActiveSP
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, false)
     end
     
     # @private
@@ -65,7 +65,7 @@ module ActiveSP
   private
     
     def data
-      call("UserGroup", "get_user_info", "userLoginName" => @login_name).xpath("//spdir:User", NS).first
+      call("UserGroup", "GetUserInfo", "userLoginName" => @login_name).xpath("//spdir:User", NS).first
     end
     cache :data
     

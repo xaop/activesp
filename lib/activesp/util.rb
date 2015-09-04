@@ -58,7 +58,7 @@ module ActiveSP
             else
               v = Time.xmlschema(v.sub(/ /, "T"))
             end
-          when "Computed", "Text", "Guid", "ContentTypeId", "URL"
+          when "Computed", "Text", "Guid", "ContentTypeId", "URL", "Calculated"
           when "Integer", "Counter", "Attachments"
             v = v && v != "" ? Integer(v) : nil
           when "ModStat" # 0
@@ -79,7 +79,7 @@ module ActiveSP
             v = create_user_or_group_by_name(site, v)
           when "UserMulti"
             d = split_multi(v)
-            v = (0...(d.length / 4)).map { |i| create_user_or_group(site, d[4 * i + 2]) }
+            v = (0...(d.length / 4)).map { |i| create_user_or_group_by_name(site, d[4 * i + 2]) }
           
           when "Choice"
             # For some reason there is no encoding here
@@ -101,9 +101,18 @@ module ActiveSP
             else
               v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
             end
-          
+          when "TaxonomyFieldType"
+            d = split_multi(v)
+            # TODO: lookup translated values in metadata store?
+            v = d[2]
+          when "TaxonomyFieldTypeMulti"
+            d = split_multi(v)
+            # TODO: lookup translated values in metadata store?
+            v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
+          when "ThreadIndex"
+            
           else
-            # raise NotImplementedError, "don't know type #{field.type.inspect} for #{k}=#{v.inspect}"
+            # raise NotImplementedError, "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect}"
             # Note: can't print self if it needs the attributes to be loaded, so just display the class
             # warn "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on #{self.class}"
           end
@@ -121,7 +130,14 @@ module ActiveSP
       result
     end
     
+    # TODO: check if this is still needed
     def create_user_or_group(site, entry)
+      with_user_proxy(site) do
+        create_user_or_group_no_proxy(site, entry)
+      end
+    end
+    
+    def create_user_or_group_no_proxy(site, entry)
       if entry[/\\/]
         User.new(site.connection.root, entry)
       else
@@ -130,26 +146,46 @@ module ActiveSP
     end
     
     def create_user_or_group_by_name(site, name)
+      with_user_proxy(site) do
+        create_user_or_group_by_name_no_proxy(site, name)
+      end
+    end
+    
+    def create_user_or_group_by_name_no_proxy(site, name)
       if /\A\d+\z/ === name
-        create_user_or_group_by_id(site, name)
+        create_user_or_group_by_id_no_proxy(site, name)
       else
         if user = site.connection.users.find { |u| u.attribute("Name") === name }
-          User.new(site.connection.root, user.attribute("LoginName"))
-        elsif group = site.connection.groups.find { |g| g.attribute("Name") === name }
-          Group.new(site.connection.root, name)
+          user
+        elsif group = site.connection.group(name)
+          group
         end
       end
     end
     
     def create_user_or_group_by_id(site, id)
-      if user = site.connection.users.find { |u| u.attribute("ID") === id }
-        User.new(site.connection.root, user.attribute("LoginName"))
-      elsif group = site.connection.groups.find { |g| g.attribute("ID") === id }
-        Group.new(site.connection.root, group.attribute("Name"))
+      with_user_proxy(site) do
+        create_user_or_group_by_id_no_proxy(site, id)
       end
     end
     
-    def type_check_attribute(field, value)
+    def create_user_or_group_by_id_no_proxy(site, id)
+      if user = site.connection.users.find { |u| u.attribute("ID") === id }
+        user
+      elsif group = site.connection.groups.find { |g| g.attribute("ID") === id }
+        group
+      end
+    end
+    
+    def with_user_proxy(site, &blk)
+      if site.connection.user_group_proxy
+        ::ActiveSP::UserGroupProxy.new(blk)
+      else
+        blk.call
+      end
+    end
+    
+    def type_check_attribute(field, value, override_restrictions)
       case field.internal_type
       when "Text", "File", "Note", "URL", "Choice"
         value.to_s
@@ -168,6 +204,8 @@ module ActiveSP
         if field.List
           if ::ActiveSP::Item === value && value.list == field.List
             value
+          elsif nil == value
+            nil
           else
             raise ArgumentError, "wrong type for #{field.Name} attribute"
           end
@@ -218,16 +256,43 @@ module ActiveSP
         end
       when "ContentTypeId"
         value
+      when "ThreadIndex"
+        if /\A0x([A-F0-9]+)\z/ === value
+          value
+        else
+          raise ArgumentError, "wrong value for #{field.Name} attribute"
+        end
+      when "Computed"
+        # ContentType is Computed in SP 2011
+        if override_restrictions || field.Name == "ContentType"
+          value.to_s
+        else
+          raise "not yet #{field.Name}:#{field.internal_type}"
+        end
+      when "ListReference"
+        ActiveSP::List === value and value or raise ArgumentError, "wrong type for #{field.Name} attribute"
+      when "TaxonomyFieldType"
+        if value
+          d = split_multi(value)
+          # TODO: lookup translated values in metadata store?
+          d[2]
+        end
+      when "TaxonomyFieldTypeMulti"
+        if value
+          d = split_multi(value)
+          # TODO: lookup translated values in metadata store?
+          (0...(d.length / 4)).map { |i| d[4 * i + 2] }
+        end
       else
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
     end
     
-    def type_check_attributes_for_creation(fields, attributes)
+    def type_check_attributes_for_creation(fields, attributes, override_restrictions)
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
-          if !field.ReadOnly || field.Name == "ContentType"
-            h[k] = type_check_attribute(field, v)
+          if override_restrictions || !field.ReadOnly || field.Name == "ContentType"
+            h[k] = type_check_attribute(field, v, override_restrictions)
             h
           else
             raise ArgumentError, "field #{field.Name} is read-only"
@@ -238,7 +303,7 @@ module ActiveSP
       end
     end
     
-    def untype_cast_attributes(site, list, fields, attributes)
+    def untype_cast_attributes(site, list, fields, attributes, override_restrictions)
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
           case field.internal_type
@@ -262,6 +327,27 @@ module ActiveSP
           when "LookupMulti"
             v = v.map { |i| i.ID }.join(";#;#")
           when "ContentTypeId"
+          when "ThreadIndex"
+          when "Computed"
+            if override_restrictions || k == "ContentType"
+              v = v.to_s
+            else
+              raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
+            end
+          when "ListReference"
+            v = v.ID
+          when "TaxonomyFieldType"
+            if v
+              d = split_multi(v)
+              # TODO: lookup translated values in metadata store?
+              v =d[2]
+            end
+          when "TaxonomyFieldTypeMulti"
+            if v
+              d = split_multi(v)
+              # TODO: lookup translated values in metadata store?
+              v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
+            end
           else
             raise "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect} on self"
           end
@@ -287,10 +373,16 @@ module ActiveSP
       end.join("")
     end
     
-    def construct_xml_for_update_list_items(xml, fields, attributes)
+    def construct_xml_for_update_list_items(xml, list, fields, attributes)
       attributes.map do |k, v|
         field = fields[k]
-        xml.Field(v, "Name" => field.StaticName)
+        if field.StaticName == "ContentType"
+          type = list.content_types_by_name[v]
+          xml.Field(v, "Name" => field.StaticName)
+          xml.Field(type.ID, "Name" => "ContentTypeId")
+        else
+          xml.Field(v, "Name" => field.StaticName)
+        end
       end
     end
     

@@ -47,7 +47,7 @@ module ActiveSP
     # Returns the list of users in this role
     # @return [User]
     def users
-      call("UserGroup", "get_user_collection_from_role", "roleName" => @name).xpath("//spdir:User", NS).map do |row|
+      call("UserGroup", "GetUserCollectionFromRole", "roleName" => @name).xpath("//spdir:User", NS).map do |row|
         attributes = clean_attributes(row.attributes)
         User.new(@site, attributes["LoginName"])
       end
@@ -57,7 +57,7 @@ module ActiveSP
     # Returns the list of groups in this role
     # @return [Group]
     def groups
-      call("UserGroup", "get_group_collection_from_role", "roleName" => @name).xpath("//spdir:Group", NS).map do |row|
+      call("UserGroup", "GetGroupCollectionFromRole", "roleName" => @name).xpath("//spdir:Group", NS).map do |row|
         attributes = clean_attributes(row.attributes)
         Group.new(@site, attributes["Name"])
       end
@@ -74,7 +74,7 @@ module ActiveSP
     # See {Base#save}
     # @return [void]
     def save
-      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes)
+      p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, false)
     end
     
     # @private
@@ -88,7 +88,7 @@ module ActiveSP
   private
     
     def data
-      call("UserGroup", "get_role_info", "roleName" => @name).xpath("//spdir:Role", NS).first
+      call("UserGroup", "GetRoleInfo", "roleName" => @name).xpath("//spdir:Role", NS).first
     end
     cache :data
     

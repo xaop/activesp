@@ -25,62 +25,20 @@
 
 module ActiveSP
   
-  class File
+  class UserGroupProxy
     
-    include InSite
-    
-    attr_reader :url
-    
-    def initialize(item, url, destroyable)
-      @item, @url, @destroyable = item, url, destroyable
-      @site = @item.list.site
+    def initialize(blk)
+      @blk = blk
     end
     
-    def file_name
-      ::File.basename(@url)
+    def __user_group
+      @__user_group ||= @blk.call
     end
     
-    def data
-      @item.list.site.connection.fetch(@url).body
-    end
-    
-    def content_type
-      head_data["content-type"]
-    end
-    
-    def content_size
-      head_data["content-length"].to_i
-    end
-    
-    def destroy
-      if @destroyable
-        result = call("Lists", "DeleteAttachment", "listName" => @item.list.id, "listItemID" => @item.ID, "url" => @url)
-        if delete_result = result.xpath("//sp:DeleteAttachmentResponse", NS).first
-          @item.clear_cache_for(:attachment_urls)
-          self
-        else
-          raise "file could not be deleted"
-        end
-      else
-        raise TypeError, "this file cannot be destroyed"
-      end
-    end
-    
-    # @private
-    def to_s
-      "#<ActiveSP::File url=#{@url}>"
-    end
-    
-    # @private
-    alias inspect to_s
-    
-  private
-    
-    def head_data
-      @head_data ||= @item.list.site.connection.head(@url)
+    def method_missing(m, *a, &b)
+      __user_group.send(m, *a, &b)
     end
     
   end
   
 end
-
