@@ -222,12 +222,13 @@ module ActiveSP
       updates = []
       result.xpath("//z:row", NS).each do |row|
         attributes = clean_item_attributes(row.attributes)
-        all_attrs = only_attrs ? only_attrs.inject({}) do |h, a|
-          if attributes.has_key?(a)
-            h[a] = attributes[a]
-          end
-          h
-        end : attributes
+        all_attrs = if only_attrs
+                      only_attrs.each_with_object({}) do |a, h|
+                        h[a] = attributes[a] if attributes.has_key?(a)
+                      end
+                    else
+                      attributes
+                    end
         updates << construct_item(:unset, attributes, no_preload ? nil : all_attrs)
       end
       deletes = []
