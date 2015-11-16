@@ -158,7 +158,11 @@ module ActiveSP
     
     def content=(data)
       @list.when_list { raise TypeError, "a list has attachments" }
-      @list.when_document_library { @list.create_document(:overwrite => true, :content => data, "FileLeafRef" => original_attributes["FileLeafRef"]) }
+      @list.when_document_library do
+        params = {:overwrite => true, :content => data, "FileLeafRef" => original_attributes["FileLeafRef"]}
+        params[:folder] = folder.absolute_url if folder
+        @list.create_document params
+      end
       @list.raise_on_unknown_type
     end
     
