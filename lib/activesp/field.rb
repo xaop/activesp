@@ -33,7 +33,7 @@ module ActiveSP
     extend Util
     
     # @private
-    attr_reader :ID, :Name, :internal_type
+    attr_reader :ID, :Name, :internal_type, :custom_props
     # Returns the scope of the field. This can be a site or a list
     # @return [Site, List]
     attr_reader :scope
@@ -45,8 +45,8 @@ module ActiveSP
     # be accessed through the site or list they belong to. Hence, we do not use
     # caching here as it is useless.
     # @private
-    def initialize(scope, id, name, type, parent, attributes_before_type_cast)
-      @scope, @ID, @Name, @internal_type, @parent, @attributes_before_type_cast = scope, id, name, type, parent, attributes_before_type_cast
+    def initialize(scope, id, name, type, parent, attributes_before_type_cast, custom_props = {})
+      @scope, @ID, @Name, @internal_type, @parent, @attributes_before_type_cast, @custom_props = scope, id, name, type, parent, attributes_before_type_cast, custom_props
       @site = Site === @scope ? @scope : @scope.site
     end
     

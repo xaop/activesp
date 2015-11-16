@@ -188,7 +188,7 @@ module ActiveSP
     def fields
       call("Webs", "GetColumns").xpath("//sp:Field", NS).map do |field|
         attributes = clean_attributes(field.attributes)
-        supersite && supersite.field(attributes["ID"].downcase) || Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], nil, attributes) if attributes["ID"] && attributes["StaticName"]
+        supersite && supersite.field(attributes["ID"].downcase) || Field.new(self, attributes["ID"].downcase, attributes["StaticName"], attributes["Type"], nil, attributes, extract_custom_props(field)) if attributes["ID"] && attributes["StaticName"]
       end.compact
     end
     cache :fields, :dup => :always
