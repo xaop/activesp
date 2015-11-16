@@ -251,6 +251,10 @@ module ActiveSP
       end
       save
     end
+
+    def stream_content
+      Base64.decode64 call("Copy", "GetItem", "Url" => absolute_url).xpath("//sp:GetItemResponse/sp:Stream", NS).inner_text
+    end
     
     def destroy
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
