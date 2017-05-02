@@ -196,7 +196,14 @@ module ActiveSP
     end
     
     def head(url)
-      url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+      # url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+      # 2 May 2017: URI.encode fixes at least the encoding error like "URI must be ascii only" when we have a sharepoint file with special char like "Télé".
+      # There was maybe a reason why Peter manually excaped the spaces. He said that he doesn't remember but that it was possible that there was some cases when there was already excaped chars in the URL and URI.encode was then escapping them a second time. I did some tests and I didn't find these special cases. And sharepoint apparently refuse creation of file_name with special chars.
+      # The original url line was: (8 feb 2010)
+      # request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
+      # it's quite old, there has been new sharepoint versions...
+      # let's use URI.encode(url) now but keep in mind that there may be some special cases that would give multiple escape issues.
+      url = "#{protocol}://#{open_params.join(':')}#{URI.encode(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       if login
         case auth_type
