@@ -175,9 +175,9 @@ module ActiveSP
         r = yield false 
         @sts_retry = 0
         r
-      rescue ::Savon::HTTPError => e
+      rescue ::Savon::HTTP::Error => e
         # no way to read the code of a Savon::HTTPError??
-        if (auth_type == :sts) && (@sts_retry < nbr) && e.message.match("403") # FORBIDDEN
+        if (auth_type == :sts) && (@sts_retry < nbr) && (e.to_hash[:code] == 403) # FORBIDDEN
           
           StsAuthenticator.reset_cookie
           @sts_retry += 1
@@ -188,20 +188,22 @@ module ActiveSP
       end
     end
     
-    def authenticate(http, options = {})
+    def authenticate(http, wsdl = false)
       if login
+        if wsdl
+          wsdl.authenticate(:method => auth_type, :usename => login, :password => password)
+        end
         case auth_type
         when :ntlm
-          http.ntlm_auth(login, password)
+          http.auth.ntlm(login, password)
         when :basic
-          http.basic_auth(login, password)
+          http.auth.basic(login, password)
+        when :digest
+          http.auth.digest(login, password)
+        when :gss_negotiate
+          http.auth.gssnegotiate(login, password)
         when :sts
-          cookie = StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url))
-          if options[:is_request]
-            http["Cookie"] = cookie
-          else
-            http.headers["Cookie"] = cookie
-          end
+          http.headers["Cookie"] = StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url))
         else
           raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
         end
