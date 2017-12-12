@@ -169,12 +169,52 @@ module ActiveSP
       end
     end
     
+    def with_sts_auth_retry(nbr = 1)
+      @sts_retry ||= 0
+      begin
+        r = yield false 
+        @sts_retry = 0
+        r
+      rescue ::Savon::HTTPError => e
+        # no way to read the code of a Savon::HTTPError??
+        if (auth_type == :sts) && (@sts_retry < nbr) && e.message.match("403") # FORBIDDEN
+          
+          StsAuthenticator.reset_cookie
+          @sts_retry += 1
+          yield true
+        else
+          raise e
+        end
+      end
+    end
+    
+    def authenticate(http, options = {})
+      if login
+        case auth_type
+        when :ntlm
+          http.ntlm_auth(login, password)
+        when :basic
+          http.basic_auth(login, password)
+        when :sts
+          cookie = StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url))
+          if options[:is_request]
+            http["Cookie"] = cookie
+          else
+            http.headers["Cookie"] = cookie
+          end
+        else
+          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+        end
+      end
+    end
+    
     # Fetches the content at the given URL using the login and password with which this
     # connection was constructed, if any. Always uses the GET method. Supports only
     # HTTP as protocol at the time of writing. This is useful for fetching content files
     # from the server.
     # @param [String] url The URL to fetch
     # @return [String] The content fetched from the URL
+        
     def fetch(url)
       # url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
       # 2 May 2017: URI.encode fixes at least the encoding error like "URI must be ascii only" when we have a sharepoint file with special char like "Télé".
@@ -185,42 +225,20 @@ module ActiveSP
       # let's use URI.encode(url) now but keep in mind that there may be some special cases that would give multiple escape issues.
       url = "#{protocol}://#{open_params.join(':')}#{URI.encode(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
-      if login
-        case auth_type
-        when :ntlm
-          request.auth.ntlm(login, password)
-        when :basic
-          request.auth.basic(login, password)
-        when :digest
-          request.auth.digest(login, password)
-        when :gss_negotiate
-          request.auth.gssnegotiate(login, password)
-        else
-          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-        end
+      with_sts_auth_retry do
+        authenticate(request)
+        HTTPI.get(request)
       end
-      HTTPI.get(request)
     end
     
     def head(url)
       # url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
       url = "#{protocol}://#{open_params.join(':')}#{URI.encode(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
-      if login
-        case auth_type
-        when :ntlm
-          request.auth.ntlm(login, password)
-        when :basic
-          request.auth.basic(login, password)
-        when :digest
-          request.auth.digest(login, password)
-        when :gss_negotiate
-          request.auth.gssnegotiate(login, password)
-        else
-          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-        end
+      with_sts_auth_retry do
+        authenticate(request)
+        HTTPI.head(request).headers
       end
-      HTTPI.head(request).headers
     end
 
     def open_params

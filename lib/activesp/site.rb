@@ -108,7 +108,7 @@ module ActiveSP
       title = title.to_s
       lcid = attributes.delete("Language")
       Integer === lcid or raise ArgumentError, "wrong type for Language attribute"
-      parameters = type_check_attributes_for_creation(fields_by_name, attributes, false)
+      type_check_attributes_for_creation(fields_by_name, attributes, false)
       result = call("Meetings", "CreateWorkspace", "title" => title, "templateName" => template.Name, "lcid" => lcid)
       Site.new(connection, result.xpath("//meet:CreateWorkspace", NS).first["Url"].to_s, @depth + 1)
     end
@@ -137,7 +137,7 @@ module ActiveSP
       title or raise ArgumentError, "wrong type for Title attribute"
       title = title.to_s
       description = attributes.delete("Description").to_s
-      parameters = type_check_attributes_for_creation(fields_by_name, attributes, false)
+      type_check_attributes_for_creation(fields_by_name, attributes, false)
       result = call("Lists", "AddList", "listName" => title, "description" => description, "templateID" => template.Type)
       list = result.xpath("//sp:List", NS).first
       List.new(self, list["ID"].to_s, list["Title"].to_s, clean_attributes(list.attributes))
@@ -256,7 +256,12 @@ module ActiveSP
   private
     
     def call(service, m, *args, &blk)
-      result = service(service).call(m, *args, &blk)
+      result = connection.with_sts_auth_retry do |retried|
+        if retried
+          @services.delete(service)
+        end
+        service(service).call(m, *args, &blk)
+      end
       Nokogiri::XML.parse(result.http.body)
     end
     
@@ -362,24 +367,7 @@ module ActiveSP
         @site, @name = site, name
         @client = Savon::Client.new do |wsdl, http|
           wsdl.document = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
-          if site.connection.login
-            auth_type = site.connection.auth_type
-            login = site.connection.login
-            password = site.connection.password
-            wsdl.authenticate(:method => auth_type, :usename => login, :password => password)
-            case auth_type
-            when :ntlm
-              http.auth.ntlm(login, password)
-            when :basic
-              http.auth.basic(login, password)
-            when :digest
-              http.auth.digest(login, password)
-            when :gss_negotiate
-              http.auth.gssnegotiate(login, password)
-            else
-              raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
-            end
-          end
+          site.connection.authenticate(http, wsdl)
         end
       end
       
