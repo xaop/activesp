@@ -25,6 +25,8 @@
 
 require 'nokogiri'
 require 'time'
+require 'curb'
+
 
 module ActiveSP
 end

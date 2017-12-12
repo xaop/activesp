@@ -106,8 +106,10 @@ module ActiveSP
         r = yield false 
         @sts_retry = 0
         r
-      rescue Savon::HTTP::Error => e
-        if (auth_type == :sts) && (@sts_retry < nbr) && (e.to_hash[:code] == 403) # FORBIDDEN
+      rescue ::Savon::HTTPError => e
+        # no way to read the code of a Savon::HTTPError??
+        if (auth_type == :sts) && (@sts_retry < nbr) && e.message.match("403") # FORBIDDEN
+          
           StsAuthenticator.reset_cookie
           @sts_retry += 1
           yield true
@@ -117,7 +119,7 @@ module ActiveSP
       end
     end
     
-    def authenticate(http)
+    def authenticate(http, options = {})
       if login
         case auth_type
         when :ntlm
@@ -125,7 +127,12 @@ module ActiveSP
         when :basic
           http.basic_auth(login, password)
         when :sts
-          http.headers["Cookie"] = StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url))
+          cookie = StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url))
+          if options[:is_request]
+            http["Cookie"] = cookie
+          else
+            http.headers["Cookie"] = cookie
+          end
         else
           raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
         end
@@ -147,8 +154,7 @@ module ActiveSP
       Net::HTTP.start(*@open_params) do |http|
         request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
         with_sts_auth_retry do
-          authenticate(request)
-          HTTPI.get(request)
+          authenticate(request, {:is_request => true})
           http.request(request)
         end
       end
@@ -162,21 +168,10 @@ module ActiveSP
       end
       Net::HTTP.start(*@open_params) do |http|
         request = Net::HTTP::Head.new(URL(url).full_path.gsub(/ /, "%20"))
-        if @login
-          case auth_type
-          when :ntlm
-            request.ntlm_auth(@login, @password)
-          when :basic
-            request.basic_auth(@login, @password)
-          else
-            raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-          end
+        with_sts_auth_retry do
+          authenticate(request, {:is_request => true})
+          http.request(request)
         end
-        response = http.request(request)
-        # if Net::HTTPFound === response
-        #   response = fetch(response["location"])
-        # end
-        # response
       end
     end
     

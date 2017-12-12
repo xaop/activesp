@@ -208,8 +208,6 @@ module ActiveSP
         if retried
           @services.delete(service)
         end
-        byebug
-        true
         service(service).call(m, *args, &blk)
       end
       Nokogiri::XML.parse(result.http.body)
@@ -282,21 +280,6 @@ module ActiveSP
     
     # @private
     class Service
-      
-      def initialize(site, name)
-        @site, @name = site, name
-        @client = Savon::Client.new(::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL"))
-        if site.connection.login
-          case site.connection.auth_type
-          when :ntlm
-            @client.request.ntlm_auth(site.connection.login, site.connection.password)
-          when :basic
-            @client.request.basic_auth(site.connection.login, site.connection.password)
-          else
-            raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
-          end
-        end
-      end
       
       def initialize(site, name)
         @site, @name = site, name
