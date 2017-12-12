@@ -204,7 +204,14 @@ module ActiveSP
   private
     
     def call(service, m, *args, &blk)
-      result = service(service).call(m, *args, &blk)
+      result = connection.with_sts_auth_retry do |retried|
+        if retried
+          @services.delete(service)
+        end
+        byebug
+        true
+        service(service).call(m, *args, &blk)
+      end
       Nokogiri::XML.parse(result.http.body)
     end
     
@@ -289,6 +296,12 @@ module ActiveSP
             raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
           end
         end
+      end
+      
+      def initialize(site, name)
+        @site, @name = site, name
+        @client = Savon::Client.new(::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL"))
+        site.connection.authenticate(@client.request)
       end
       
       def call(m, *args)
