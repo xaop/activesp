@@ -1,5 +1,5 @@
 # Copyright (c) 2010 XAOP bvba
-# 
+#
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
 # files (the "Software"), to deal in the Software without
@@ -8,17 +8,17 @@
 # copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following
 # conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# 
+#
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 # NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-# 
+#
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
@@ -34,37 +34,49 @@ HTTPI.log = false
 
 HTTPI.adapter = :curb
 
+class Savon::WSDL::Request
+
+  def response
+    @response ||= with_logging do
+      response = HTTPI.get(request)
+      raise "Can't fetch WSDL: #{response.code} (#{request.url})" if response.error?
+      response
+    end
+  end
+
+end
+
 class Savon::SOAP::Fault
-  
+
   def error_code
     Integer(((to_hash[:fault] || {})[:detail] || {})[:errorcode] || 0)
   end
-  
+
   def error_string
     ((to_hash[:fault] || {})[:detail] || {})[:errorstring]
   end
-  
+
 end
 
 class HTTPI::Auth::Config
-  
+
   # Accessor for the GSSNEGOTIATE auth credentials.
   def gssnegotiate(*args)
     return @gssnegotiate if args.empty?
-    
+
     self.type = :gssnegotiate
     @gssnegotiate = args.flatten.compact
   end
-  
+
   # Returns whether to use GSSNEGOTIATE auth.
   def gssnegotiate?
     type == :gssnegotiate
   end
-  
+
 end
 
 class HTTPI::Adapter::Curb
-  
+
   def setup_client(request)
     basic_setup request
     setup_http_auth request if request.auth.http?
@@ -72,37 +84,37 @@ class HTTPI::Adapter::Curb
     setup_ntlm_auth request if request.auth.ntlm?
     setup_gssnegotiate_auth request if request.auth.gssnegotiate?
   end
-  
+
   def setup_gssnegotiate_auth(request)
     client.username, client.password = *request.auth.credentials
     client.http_auth_types = request.auth.type
   end
-  
+
 end
 
 # This is because setting the cookie causes problems on SP 2011
 class Savon::Client
-  
+
 private
-  
+
   def set_cookie(headers)
   end
-  
+
 end
 
 module ActiveSP
-  
+
   # This class is uses to configure the connection to a SharePoint repository. This is
   # the starting point for doing anything with SharePoint.
   class Connection
-    
+
     include Util
     include PersistentCachingConfig
-    
+
     # @private
     # TODO: create profile
     attr_reader :login, :password, :auth_type, :root_url, :trace, :user_group_proxy
-    
+
     # @param [Hash] options The connection options
     # @option options [String] :root The URL of the root site
     # @option options [String] :auth_type (:ntlm) The authentication type, can be :basic or :ntlm.
@@ -120,7 +132,7 @@ module ActiveSP
       cache = nil
       configure_persistent_cache { |c| cache ||= c }
     end
-    
+
     # Finds the object with the given key
     # @param [String] key The key of the object to find
     # @return [Base, nil] The object with the given key, or nil if no object with the given key is found
@@ -167,7 +179,46 @@ module ActiveSP
         raise "not yet #{key.inspect}"
       end
     end
-    
+
+    def with_sts_auth_retry(nbr = 1)
+      @sts_retry ||= 0
+      begin
+        r = yield false
+        @sts_retry = 0
+        r
+      # rescue ::Savon::HTTPError => e
+      #   # no way to read the code of a Savon::HTTPError??
+      #   if (auth_type == :sts) && (@sts_retry < nbr) && e.message.match("403") # FORBIDDEN
+
+      #     StsAuthenticator.reset_cookie
+      #     @sts_retry += 1
+      #     yield true
+      #   else
+      #     raise e
+      #   end
+      end
+    end
+
+    def authenticate(http, options = {})
+      if login
+        case auth_type
+        when :ntlm
+          http.auth.ntlm(login, password)
+        when :basic
+          http.auth.basic(login, password)
+        when :digest
+          http.auth.digest(login, password)
+        when :gss_negotiate
+          http.auth.gssnegotiate(login, password)
+        when :sts
+          cookie = StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url))
+          http.headers["Cookie"] = cookie
+        else
+          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+        end
+      end
+    end
+
     # Fetches the content at the given URL using the login and password with which this
     # connection was constructed, if any. Always uses the GET method. Supports only
     # HTTP as protocol at the time of writing. This is useful for fetching content files
@@ -180,50 +231,107 @@ module ActiveSP
         u = URL(@root_url)
         [u.host, u.port]
       end
+
+
       url = "http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
-      request = HTTPI::Request.new(url)
-      if login
-        case auth_type
-        when :ntlm
-          request.auth.ntlm(login, password)
-        when :basic
-          request.auth.basic(login, password)
-        when :digest
-          request.auth.digest(login, password)
-        when :gss_negotiate
-          request.auth.gssnegotiate(login, password)
-        else
-          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-        end
+      with_sts_auth_retry do
+        request = HTTPI::Request.new(url)
+        authenticate(request)
+        HTTPI.get(request)
       end
-      HTTPI.get(request)
+# <<<<<<< HEAD
+#       url = "http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+#       request = HTTPI::Request.new(url)
+#       if login
+#         case auth_type
+#         when :ntlm
+#           request.auth.ntlm(login, password)
+#         when :basic
+#           request.auth.basic(login, password)
+#         when :digest
+#           request.auth.digest(login, password)
+#         when :gss_negotiate
+#           request.auth.gssnegotiate(login, password)
+#         else
+#           raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+# ||||||| merged common ancestors
+#       Net::HTTP.start(*@open_params) do |http|
+#         request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
+#         if @login
+#           case auth_type
+#           when :ntlm
+#             request.ntlm_auth(@login, @password)
+#           when :basic
+#             request.basic_auth(@login, @password)
+#           else
+#             raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+#           end
+# =======
+#       Net::HTTP.start(*@open_params) do |http|
+#         request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
+#         with_sts_auth_retry do
+#           authenticate(request, {:is_request => true})
+#           http.request(request)
+# >>>>>>> origin/master
+      #   end
+      # end
+      # HTTPI.get(request)
     end
-    
+
     def head(url)
       # TODO: support HTTPS too
       @open_params ||= begin
         u = URL(@root_url)
         [u.host, u.port]
       end
+
+
       url = "http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
-      request = HTTPI::Request.new(url)
-      if login
-        case auth_type
-        when :ntlm
-          request.auth.ntlm(login, password)
-        when :basic
-          request.auth.basic(login, password)
-        when :digest
-          request.auth.digest(login, password)
-        when :gss_negotiate
-          request.auth.gssnegotiate(login, password)
-        else
-          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
-        end
+      with_sts_auth_retry do
+        request = HTTPI::Request.new(url)
+        authenticate(request)
+        HTTPI.head(request).headers
       end
-      HTTPI.head(request).headers
+
+# <<<<<<< HEAD
+#       url = "http://#{@open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
+#       request = HTTPI::Request.new(url)
+#       if login
+#         case auth_type
+#         when :ntlm
+#           request.auth.ntlm(login, password)
+#         when :basic
+#           request.auth.basic(login, password)
+#         when :digest
+#           request.auth.digest(login, password)
+#         when :gss_negotiate
+#           request.auth.gssnegotiate(login, password)
+#         else
+#           raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+# ||||||| merged common ancestors
+#       Net::HTTP.start(*@open_params) do |http|
+#         request = Net::HTTP::Head.new(URL(url).full_path.gsub(/ /, "%20"))
+#         if @login
+#           case auth_type
+#           when :ntlm
+#             request.ntlm_auth(@login, @password)
+#           when :basic
+#             request.basic_auth(@login, @password)
+#           else
+#             raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+#           end
+# =======
+#       Net::HTTP.start(*@open_params) do |http|
+#         request = Net::HTTP::Head.new(URL(url).full_path.gsub(/ /, "%20"))
+#         with_sts_auth_retry do
+#           authenticate(request, {:is_request => true})
+#           http.request(request)
+# >>>>>>> origin/master
+#         end
+#       end
+#       HTTPI.head(request).headers
     end
-    
+
   end
-  
+
 end

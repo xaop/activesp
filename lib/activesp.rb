@@ -25,6 +25,8 @@
 
 require 'nokogiri'
 require 'time'
+require 'curb'
+
 
 module ActiveSP
 end
@@ -38,6 +40,8 @@ require 'activesp/errors'
 
 require 'activesp/base'
 
+require 'activesp/soap'
+require 'activesp/sts_authenticator'
 require 'activesp/connection'
 require 'activesp/root'
 require 'activesp/site'

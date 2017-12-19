@@ -1,5 +1,5 @@
 # Copyright (c) 2010 XAOP bvba
-# 
+#
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
 # files (the "Software"), to deal in the Software without
@@ -8,50 +8,50 @@
 # copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following
 # conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# 
+#
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 # NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-# 
+#
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
 module ActiveSP
-  
+
   class Site < Base
-    
+
     extend Caching
     extend PersistentCaching
     include Util
-    
+
     # The URL of this site
     # @return [String]
     attr_reader :url # TODO: deprecate this in favor of Url
     # @private
     attr_reader :connection
-    
+
     persistent { |connection, url, *a| [connection, [:site, url]] }
     # @private
     def initialize(connection, url, depth = 0)
       @connection, @url, @depth = connection, url, depth
       @services = {}
     end
-    
+
     def Url
       @url
     end
-    
+
     def Name
       ::File.basename(@url)
     end
-    
+
     # Returns the containing site, or nil if this is the root site
     # @return [Site]
     def supersite
@@ -60,26 +60,26 @@ module ActiveSP
       end
     end
     cache :supersite
-    
+
     # Returns the root site, or this site if it is the root site
     # @return [Site]
     def rootsite
       is_root_site? ? self : supersite.rootsite
     end
     cache :rootsite
-    
+
     # Returns true if this site is the root site
     # @return [Boolean]
     def is_root_site?
       @depth == 0
     end
-    
+
     # See {Base#key}
     # @return [String]
     def key # This documentation is not ideal. The ideal doesn't work out of the box
       encode_key("S", [@url[@connection.root_url.sub(/\/\z/, "").length + 1..-1], @depth])
     end
-    
+
     def each_site(&blk)
       __sites.each(&blk)
     end
@@ -88,7 +88,7 @@ module ActiveSP
         @object.create_site(attributes)
       end
     end
-    
+
     # Returns the site with the given name. This name is what appears in the URL as name and is immutable. Return nil
     # if such a site does not exist
     # @param [String] name The name if the site
@@ -99,7 +99,7 @@ module ActiveSP
     rescue Savon::SOAP::Fault
       nil
     end
-    
+
     def create_site(attributes)
       template = attributes.delete("Template")
       ActiveSP::SiteTemplate === template or raise ArgumentError, "wrong type for Template attribute"
@@ -112,7 +112,7 @@ module ActiveSP
       result = call("Meetings", "CreateWorkspace", "title" => title, "templateName" => template.Name, "lcid" => lcid)
       Site.new(connection, result.xpath("//meet:CreateWorkspace", NS).first["Url"].to_s, @depth + 1)
     end
-    
+
     def each_list(&blk)
       __lists.each(&blk)
     end
@@ -121,7 +121,7 @@ module ActiveSP
         @object.create_list(attributes)
       end
     end
-    
+
     # Returns the list with the given name. The name is what appears in the URL as name and is immutable. Returns nil
     # if such a list does not exist
     # @param [String] name The name of the list
@@ -129,7 +129,7 @@ module ActiveSP
     def list(name)
       lists.find { |list| ::File.basename(list.url) == name }
     end
-    
+
     def create_list(attributes)
       template = attributes.delete("ServerTemplate")
       ActiveSP::ListTemplate === template or raise ArgumentError, "wrong type for ServerTemplate attribute"
@@ -142,14 +142,14 @@ module ActiveSP
       list = result.xpath("//sp:List", NS).first
       List.new(self, list["ID"].to_s, list["Title"].to_s, clean_attributes(list.attributes))
     end
-    
+
     # Returns the site or list with the given name, or nil if it does not exist
     # @param [String] name The name of the site or list
     # @return [Site, List]
     def /(name)
       list(name) || site(name)
     end
-    
+
     # Returns the list of content types defined for this site. These include the content types defined on
     # containing sites as they are automatically inherited
     # @return [Array<ContentType>]
@@ -160,17 +160,17 @@ module ActiveSP
       end
     end
     cache :content_types, :dup => :always
-    
+
     def content_types_by_name
       content_types.inject({}) { |h, t| h[t.Name] = t ; h }
     end
     cache :content_types_by_name, :dup => :always
-    
+
     # @private
     def content_type(id)
       content_types.find { |t| t.id == id }
     end
-    
+
     # Returns the permission set associated with this site. This returns the permission set of
     # the containing site if it does not have a permission set of its own
     # @return [PermissionSet]
@@ -182,7 +182,7 @@ module ActiveSP
       end
     end
     cache :permission_set
-    
+
     # Returns the list of fields for this site. This includes fields inherited from containing sites
     # @return [Array<Field>]
     def fields
@@ -192,82 +192,87 @@ module ActiveSP
       end.compact
     end
     cache :fields, :dup => :always
-    
+
     # Returns the result of {Site#fields} hashed by name
     # @return [Hash{String => Field}]
     def fields_by_name
       fields.inject({}) { |h, f| h[f.attributes["StaticName"]] = f ; h }
     end
     cache :fields_by_name, :dup => :always
-    
+
     # @private
     def field(id)
       fields.find { |f| f.ID == id }
     end
-    
+
     def update_attributes(attributes)
       attributes.each do |k, v|
         set_attribute(k, v)
       end
       save
     end
-    
+
     # See {Base#save}
     # @return [void]
     def save
       update_attributes_internal(untype_cast_attributes(self, nil, internal_attribute_types, changed_attributes, false))
       self
     end
-    
+
     def accessible?
       data
       true
     rescue Savon::HTTP::Error
       false
     end
-    
+
     def destroy
       call("Dws", "DeleteDws")
       supersite.__unregister_site(self)
       self
     end
-    
+
     # @private
     def to_s
       "#<ActiveSP::Site url=#{@url}>"
     end
-    
+
     # @private
     alias inspect to_s
-    
+
     #private
     def __unregister_site(site)
       p [:__unregister_site, self]
       @__sites.delete(site) if @__sites
     end
-    
+
     def quick_attributes
       {
         "Name" => self.Name,
         "Url" => self.Url
       }
     end
-    
+
   private
-    
+
     def call(service, m, *args, &blk)
-      result = service(service).call(m, *args, &blk)
+      result = connection.with_sts_auth_retry do |retried|
+        if retried
+          @services.delete(service)
+        end
+        service(service).call(m, *args, &blk)
+      end
       Nokogiri::XML.parse(result.http.body)
     end
-    
+
     def fetch(url)
       @connection.fetch(url)
     end
-    
+
     def service(name)
       @services[name] ||= Service.new(self, name)
     end
-    
+
     def data
       # Looks like you can't call this as a non-admin. To investigate further
       call("SiteData", "GetWeb")
@@ -276,7 +281,7 @@ module ActiveSP
       call("Webs", "GetWeb", "webUrl" => ".")
     end
     cache :data
-    
+
     def attributes_before_type_cast
       if element = data.xpath("//sp:sWebMetadata", NS).first
         result = {}
@@ -290,12 +295,12 @@ module ActiveSP
       end
     end
     cache :attributes_before_type_cast
-    
+
     def original_attributes
       type_cast_attributes(self, nil, internal_attribute_types, attributes_before_type_cast)
     end
     cache :original_attributes
-    
+
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true, "Allow Anonymous Access?"),
@@ -317,7 +322,7 @@ module ActiveSP
         "WebID" => GhostField.new("WebID", "Text", false, true, "Web ID")
       }
     end
-    
+
     def permissions
       result = call("Permissions", "GetPermissionCollection", "objectName" => ::File.basename(@url), "objectType" => "Web")
       result.xpath("//spdir:Permission", NS).map do |row|
@@ -326,18 +331,18 @@ module ActiveSP
       end
     end
     cache :permissions, :dup => :always
-    
+
     def update_attributes_internal(attributes)
       call("Dws", "RenameDws", "title" => attributes["Title"])
       reload
     end
-    
+
     def __sites
       result = call("Webs", "GetWebCollection")
       result.xpath("//sp:Web", NS).map { |web| Site.new(connection, web["Url"].to_s, @depth + 1) }
     end
     cache :__sites, :dup => :always
-    
+
     def __lists
       result1 = call("Lists", "GetListCollection")
       result2 = call("SiteData", "GetListCollection")
@@ -354,32 +359,55 @@ module ActiveSP
       end
     end
     cache :__lists, :dup => :always
-    
+
     # @private
     class Service
-      
+
       def initialize(site, name)
         @site, @name = site, name
+
+
         @client = Savon::Client.new do |wsdl, http|
           wsdl.document = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
-          if site.connection.login
-            case site.connection.auth_type
-            when :ntlm
-              http.auth.ntlm(site.connection.login, site.connection.password)
-            when :basic
-              http.auth.basic(site.connection.login, site.connection.password)
-            when :digest
-              http.auth.digest(site.connection.login, site.connection.password)
-            when :gss_negotiate
-              http.auth.gssnegotiate(site.connection.login, site.connection.password)
-            else
-              raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
-            end
-          end
-          
+          site.connection.authenticate(http)
         end
+# <<<<<<< HEAD
+#         @client = Savon::Client.new do |wsdl, http|
+#           wsdl.document = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
+#           if site.connection.login
+#             case site.connection.auth_type
+#             when :ntlm
+#               http.auth.ntlm(site.connection.login, site.connection.password)
+#             when :basic
+#               http.auth.basic(site.connection.login, site.connection.password)
+#             when :digest
+#               http.auth.digest(site.connection.login, site.connection.password)
+#             when :gss_negotiate
+#               http.auth.gssnegotiate(site.connection.login, site.connection.password)
+#             else
+#               raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
+#             end
+#           end
+
+#         end
+# ||||||| merged common ancestors
+#         @client = Savon::Client.new(::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL"))
+#         if site.connection.login
+#           case site.connection.auth_type
+#           when :ntlm
+#             @client.request.ntlm_auth(site.connection.login, site.connection.password)
+#           when :basic
+#             @client.request.basic_auth(site.connection.login, site.connection.password)
+#           else
+#             raise ArgumentError, "Unknown authentication type #{site.connection.auth_type.inspect}"
+#           end
+#         end
+# =======
+#         @client = Savon::Client.new(::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL"))
+#         site.connection.authenticate(@client.request)
+# >>>>>>> origin/master
       end
-      
+
       def call(m, *args)
         t1 = Time.now
         if Hash === args[-1]
@@ -405,9 +433,9 @@ module ActiveSP
         t2 = Time.now
         puts "SP - time: %.3fs, site: %s, service: %s, method: %s, body: %s" % [t2 - t1, @site.url, @name, m, body.inspect] if @site.connection.trace
       end
-      
+
     end
-    
+
   end
-  
+
 end
