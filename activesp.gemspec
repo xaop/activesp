@@ -14,7 +14,6 @@ Gem::Specification.new do |s|
   # s.executables.push(*(Dir['bin/*.rb']))
   s.add_dependency('savon-xaop', '= 0.7.2.7')
   s.add_dependency('nokogiri')
-  s.add_dependency('curb')
   # s.rdoc_options << '--exclude' << 'ext' << '--main' << 'README'
   # s.extra_rdoc_files = ["README"]
   s.has_rdoc = false
