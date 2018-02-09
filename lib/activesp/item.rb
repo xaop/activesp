@@ -353,7 +353,7 @@ module ActiveSP
       create_result = result.xpath("//sp:Result", NS).first
       error_code = create_result.xpath("./sp:ErrorCode", NS).first.text.to_i(0)
       if error_code == 0
-        row = result.xpath("//z:row", NS).first
+        row = result.xpath("//*[local-name()= 'row' and namespace-uri()= '#RowsetSchema']", NS).first
         @attributes_before_type_cast = clean_item_attributes(row.attributes)
         reload
       else

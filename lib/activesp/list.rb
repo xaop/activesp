@@ -221,7 +221,7 @@ module ActiveSP
         result = call("Lists", "GetListItemChangesSinceToken", {"listName" => @id, 'queryOptions' => '<queryOptions xmlns:s="http://schemas.microsoft.com/sharepoint/soap/" ><QueryOptions/></queryOptions>', 'viewFields' => view_fields}.merge(row_limit))
       end
       updates = []
-      result.xpath("//z:row", NS).each do |row|
+      result.xpath("//*[local-name()='row' and namespace-uri()='#RowsetSchema']", NS).each do |row|
         attributes = clean_item_attributes(row.attributes)
         all_attrs = if only_attrs
                       only_attrs.each_with_object({}) do |a, h|
@@ -520,7 +520,7 @@ module ActiveSP
       options = options.dup
       row_limit = (r_l = options.delete(:row_limit)) ? {'rowLimit' => r_l.to_s} : {}
       result = call("Lists", "GetListItems", {"listName" => @id, "viewFields" => view_fields, "queryOptions" => query_options}.merge(query).merge(row_limit))
-      result.xpath("//z:row", NS).each do |row|
+      result.xpath("//*[local-name()='row' and namespace-uri()='#RowsetSchema']", NS).each do |row|
         yield clean_item_attributes(row.attributes)
       end
     end
@@ -588,7 +588,7 @@ module ActiveSP
       create_result = result.xpath("//sp:Result", NS).first
       error_text = create_result.xpath("./sp:ErrorText", NS).first
       if !error_text
-        row = result.xpath("//z:row", NS).first
+        row = result.xpath("//*[local-name()='row' and namespace-uri()='#RowsetSchema']", NS).first
         construct_item(nil, clean_item_attributes(row.attributes), nil)
       else
         error_code = create_result.xpath("./sp:ErrorCode", NS).first
