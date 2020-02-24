@@ -24,7 +24,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 require 'rubygems'
-require 'rake/gempackagetask'
+require 'rubygems/package_task'
 require 'yard'
 
 ACTIVESP_VERSION = File.readlines("VERSION")[0][/[\d.]*/]
@@ -53,7 +53,7 @@ spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
 end
 
-Rake::GemPackageTask.new(spec) do |pkg|
+Gem::PackageTask.new(spec) do |pkg|
   pkg.need_zip = true
   pkg.need_tar = true
 end
