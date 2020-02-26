@@ -10,13 +10,13 @@ Gem::Specification.new do |s|
   s.description = "An object-oriented interface to SharePoint that uses the web services provided by SharePoint to connect to it. Supports SharePoint 2007 and 2010."
   s.files += %w(VERSION LICENSE README.rdoc Rakefile)
   s.files += Dir['lib/**/*.rb']
+  s.files += Dir['lib/**/*.erb']
   # s.bindir = "bin"
   # s.executables.push(*(Dir['bin/*.rb']))
   s.add_dependency('savon-xaop', '= 0.7.2.7')
   s.add_dependency('nokogiri')
   # s.rdoc_options << '--exclude' << 'ext' << '--main' << 'README'
   # s.extra_rdoc_files = ["README"]
-  s.has_rdoc = false
   s.require_paths << 'lib'
   # s.autorequire = 'mysql'
   s.required_ruby_version = '>= 1.8.1'
