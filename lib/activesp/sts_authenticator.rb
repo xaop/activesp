@@ -1,3 +1,5 @@
+require 'securerandom'
+
 module ActiveSP
   class StsAuthenticator
     URL = "https://login.microsoftonline.com/GetUserRealm.srf"
@@ -40,7 +42,7 @@ module ActiveSP
 
     def authenticate_to_sts
       guid = SecureRandom.uuid
-      query    = Soap::Authenticate.new guid: guid, username: @login, password: @password, url: @sts_url
+      query = Soap::Authenticate.new guid: guid, username: @login, password: @password, url: @sts_url
       begin
         response = Curl::Easy.http_post @sts_url, query.render do |c|
           c.ssl_verify_peer = false

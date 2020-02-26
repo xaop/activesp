@@ -1,3 +1,5 @@
+require 'erb'
+
 module ActiveSP
   module Soap
     class Authenticate
