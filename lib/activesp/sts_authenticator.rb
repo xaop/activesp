@@ -77,7 +77,7 @@ module ActiveSP
       end
       result
     end
-      
+
     def getStsUrl
       response = Curl::Easy.http_post URL, "login=#{@login.gsub("@", "%40")}&xml=1"
       return response.body_str.scan(/<STSAuthURL>([^<]+)</)[0][0]

@@ -1,5 +1,5 @@
 # Copyright (c) 2010 XAOP bvba
-# 
+#
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
 # files (the "Software"), to deal in the Software without
@@ -8,37 +8,35 @@
 # copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following
 # conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# 
+#
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 # NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-# 
+#
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
 module ActiveSP
-  
   class List < Base
-    
     include InSite
     extend Caching
     extend PersistentCaching
     include Util
-    
+
     # The containing site
     # @return [Site]
     attr_reader :site
     # The ID of the list
     # @return [String]
     attr_reader :id
-    
+
     persistent { |site, id, *a| [site.connection, [:list, id]] }
     # @private
     def initialize(site, id, title = nil, attributes_before_type_cast1 = nil, attributes_before_type_cast2 = nil)
@@ -49,21 +47,21 @@ module ActiveSP
       @attributes_before_type_cast1 = attributes_before_type_cast1 if attributes_before_type_cast1
       @attributes_before_type_cast2 = attributes_before_type_cast2 if attributes_before_type_cast2
     end
-    
+
     def RootFolder
       if attributes_before_type_cast1["RootFolder"] == ""
         clear_cache_for("attributes_before_type_cast1")
       end
       attributes_before_type_cast1["RootFolder"]
     end
-    
+
     # The URL of the list
     # @return [String]
     def url
       URL(@site.url).join(self.RootFolder).to_s
     end
     cache :url
-    
+
     # @private
     def relative_url(site = @site.connection.root)
       reference_url = site.url
@@ -73,19 +71,19 @@ module ActiveSP
       url = url.sub(/\Ahttps?:\/\/[^\/]+/, "")
       url[reference_url.length..-1]
     end
-    
+
     # See {Base#key}
     # @return [String]
     def key
       encode_key("L", [@site.key, @id])
     end
-    
+
     # @private
     def Title
       data1["Title"].to_s
     end
     cache :Title
-    
+
     # Yields the items in this list according to the given options. Note that this method does not
     # recurse into folders. I believe specifying a folder of '' actually does recurse
     # @param [Hash] options Options
@@ -120,7 +118,7 @@ module ActiveSP
       end
     end
     association :items
-    
+
     def each_document(parameters = {}, &blk)
       query = Builder::XmlMarkup.new.Query do |xml|
         xml.Where do |xml|
@@ -140,7 +138,7 @@ module ActiveSP
         @object.create_document!(parameters)
       end
     end
-    
+
     def each_folder(parameters = {}, &blk)
       query = Builder::XmlMarkup.new.Query do |xml|
         xml.Where do |xml|
@@ -160,13 +158,13 @@ module ActiveSP
         @object.create_folder!(parameters)
       end
     end
-    
+
     # Returns the item with the given name or nil if there is no item with the given name
     # @return [Item]
     def item(name)
       __item(name)
     end
-    
+
     def __item(name, options = {})
       query = Builder::XmlMarkup.new.Query do |xml|
         xml.Where do |xml|
@@ -178,36 +176,36 @@ module ActiveSP
       end
       items(options.merge(:query => query)).first
     end
-    
+
     alias / item
-    
+
     def create_document(parameters = {})
       when_list { return create_list_item(parameters) }
       when_document_library { return create_library_document(parameters) }
       raise_on_unknown_type
     end
-    
+
     def create_document!(parameters = {})
       create_document(parameters.merge(:override_restrictions => true))
     end
-    
+
     def create_folder(parameters = {})
       name = parameters.delete("FileLeafRef") or raise ArgumentError, "Specify the folder name in the 'FileLeafRef' parameter"
-      
+
       create_list_item(parameters.merge(:folder_name => name))
     end
-    
+
     def create_folder!(parameters = {})
       create_folder(parameters.merge(:override_restrictions => true))
     end
-    
+
     def changes_since_token(token, options = {})
       options = options.dup
       no_preload = options.delete(:no_preload)
       row_limit = (r_l = options.delete(:row_limit)) ? {'rowLimit' => r_l.to_s} : {}
       only_attrs = options.delete(:only_attrs)
       options.empty? or raise ArgumentError, "unknown options #{options.keys.map { |k| k.inspect }.join(", ")}"
-      
+
       if no_preload
         view_fields = Builder::XmlMarkup.new.ViewFields do |xml|
           %w[FSObjType ID UniqueId ServerUrl].each { |f| xml.FieldRef("Name" => f) }
@@ -241,7 +239,7 @@ module ActiveSP
       new_token = result.xpath("//sp:Changes", NS).first["LastChangeToken"].to_s
       { :updates => updates, :deletes => deletes, :new_token => new_token }
     end
-    
+
     def fields
       data1.xpath("//sp:Field", NS).map do |field|
         attributes = clean_attributes(field.attributes)
@@ -251,17 +249,17 @@ module ActiveSP
       end.compact
     end
     cache :fields, :dup => :always
-    
+
     def fields_by_name
       fields.inject({}) { |h, f| h[decode_field_name(f.attributes["StaticName"])] = f ; h }
     end
     cache :fields_by_name, :dup => :always
-    
+
     # @private
     def field(id)
       fields.find { |f| f.ID == id }
     end
-    
+
     def create_field(attributes)
       # TODO: remove this in time
       add_to_view = attributes.delete(:add_to_view)
@@ -287,7 +285,7 @@ module ActiveSP
         result
       end
     end
-    
+
     def content_types
       result = call("Lists", "GetListContentTypes", "listName" => @id)
       result.xpath("//sp:ContentType", NS).map do |content_type|
@@ -295,17 +293,17 @@ module ActiveSP
       end
     end
     cache :content_types, :dup => :always
-    
+
     def content_types_by_name
       content_types.inject({}) { |h, t| h[t.Name] = t ; h }
     end
     cache :content_types_by_name, :dup => :always
-    
+
     # @private
     def content_type(id)
       content_types.find { |t| t.id == id }
     end
-    
+
     def permission_set
       if attributes["InheritedSecurity"]
         @site.permission_set
@@ -314,45 +312,45 @@ module ActiveSP
       end
     end
     cache :permission_set
-    
+
     def update_attributes(attributes)
       attributes.each do |k, v|
         set_attribute(k, v)
       end
       save
     end
-    
+
     # See {Base#save}
     # @return [void]
     def save
       update_attributes_internal(untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, true))
       self
     end
-    
+
     # @private
     def to_s
       "#<ActiveSP::List Title=#{self.Title}>"
     end
-    
+
     # @private
     alias inspect to_s
-    
+
     # @private
     def when_document_library
       yield if %w[1].include?(attributes["BaseType"])
     end
-    
+
     # @private
     def when_list
       yield if %w[0 5].include?(attributes["BaseType"])
     end
-    
+
     # @private
     def raise_on_unknown_type
       base_type = attributes["BaseType"]
       raise "not yet BaseType = #{base_type.inspect}" unless %w[0 1 5].include?(base_type)
     end
-    
+
     # @private
     def __each_item(query_options, query, options = {})
       get_list_items("<ViewFields></ViewFields>", query_options, query, options) do |attributes|
@@ -397,32 +395,32 @@ module ActiveSP
         raise
       end
     end
-    
+
     def ==(object)
       ::ActiveSP::List === object && self.ID == object.ID
     end
-    
+
     def quick_attributes
       type_cast_attributes(@site, nil, internal_attribute_types, attributes_before_type_cast1)
     end
-    
+
   private
-    
+
     def data1
       call("Lists", "GetList", "listName" => @id).xpath("//sp:List", NS).first
     end
     cache :data1
-    
+
     def attributes_before_type_cast1
       clean_attributes(data1.attributes)
     end
     cache :attributes_before_type_cast1
-    
+
     def data2
       call("SiteData", "GetList", "strListName" => @id)
     end
     cache :data2
-    
+
     def attributes_before_type_cast2
       element = data2.xpath("//sp:sListMetadata", NS).first
       result = {}
@@ -432,14 +430,14 @@ module ActiveSP
       result
     end
     cache :attributes_before_type_cast2
-    
+
     def original_attributes
       self.RootFolder
       attrs = attributes_before_type_cast1.merge(attributes_before_type_cast2).merge("BaseType" => attributes_before_type_cast1["BaseType"])
       type_cast_attributes(@site, nil, internal_attribute_types, attrs)
     end
     cache :original_attributes
-    
+
     def internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowAnonymousAccess" => GhostField.new("AllowAnonymousAccess", "Bool", false, true, "Allow Anonymous Access?"),
@@ -505,7 +503,7 @@ module ActiveSP
         "WriteSecurity" => GhostField.new("WriteSecurity", "Integer", false, true, "Write Security")
       }
     end
-    
+
     def permissions
       result = call("Permissions", "GetPermissionCollection", "objectName" => @id, "objectType" => "List")
       rootsite = @site.rootsite
@@ -515,7 +513,7 @@ module ActiveSP
       end
     end
     cache :permissions, :dup => :always
-    
+
     def get_list_items(view_fields, query_options, query, options = {})
       options = options.dup
       row_limit = (r_l = options.delete(:row_limit)) ? {'rowLimit' => r_l.to_s} : {}
@@ -524,7 +522,7 @@ module ActiveSP
         yield clean_item_attributes(row.attributes)
       end
     end
-    
+
     def construct_item(folder, attributes, all_attributes)
       (attributes["FSObjType"][/1$/] ? Folder : Item).new(
         self,
@@ -535,7 +533,7 @@ module ActiveSP
         all_attributes
       )
     end
-    
+
     def create_library_document(parameters)
       parameters = parameters.dup
       content = parameters.delete(:content) or raise ArgumentError, "Specify the content in the :content parameter"
@@ -562,7 +560,7 @@ module ActiveSP
         __item(file_name, :folder => folder_object)
       end
     end
-    
+
     def create_list_item(parameters)
       parameters = parameters.dup
       folder = parameters.delete(:folder)
@@ -602,13 +600,11 @@ module ActiveSP
         end
       end
     end
-    
+
     def update_attributes_internal(attributes)
       properties = Builder::XmlMarkup.new.List(attributes)
       call("Lists", "UpdateList", "listName" => self.id, "listProperties" => properties)
       reload
     end
-    
   end
-  
 end

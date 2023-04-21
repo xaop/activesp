@@ -1,5 +1,5 @@
 # Copyright (c) 2010 XAOP bvba
-# 
+#
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
 # files (the "Software"), to deal in the Software without
@@ -8,30 +8,28 @@
 # copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following
 # conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# 
+#
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 # NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-# 
+#
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
 module ActiveSP
-  
   class Field < Base
-    
     include InSite
     extend Caching
     include Util
     extend Util
-    
+
     # @private
     attr_reader :ID, :Name, :internal_type, :custom_props
     # Returns the scope of the field. This can be a site or a list
@@ -40,7 +38,7 @@ module ActiveSP
     # Returns the parent field. This is the field defined on the containing site in case the field has a list as scope
     # @return [Field]
     attr_reader :parent
-    
+
     # There is no call to get to the field info directly, so these should always
     # be accessed through the site or list they belong to. Hence, we do not use
     # caching here as it is useless.
@@ -49,47 +47,47 @@ module ActiveSP
       @scope, @ID, @Name, @internal_type, @parent, @attributes_before_type_cast, @custom_props = scope, id, name, type, parent, attributes_before_type_cast, custom_props
       @site = Site === @scope ? @scope : @scope.site
     end
-    
+
     # See {Base#key}
     # @return [String]
     def key
       encode_key("A", [@scope.key, @ID])
     end
-    
+
     # @private
     def List
       list_for_lookup
     end
-    
+
     # @private
     def Type
       translate_internal_type(self)
     end
-    
+
     # @private
     def Mult
       !!attributes["Mult"]
     end
-    
+
     # @private
     def ReadOnly
       !!attributes["ReadOnly"]
     end
-    
+
     # See {Base#save}
     # @return [void]
     def save
       p untype_cast_attributes(@site, nil, internal_attribute_types, changed_attributes, false)
     end
-    
+
     # @private
     def to_s
       "#<ActiveSP::Field name=#{self.Name}>"
     end
-    
+
     # @private
     alias inspect to_s
-    
+
     def self.check_attributes_for_creation(site, attributes)
       name = attributes.delete("Name") or raise ArgumentError, "wrong type for Name attribute"
       name = name.to_s
@@ -98,9 +96,9 @@ module ActiveSP
       attributes = type_check_attributes_for_creation(internal_attribute_types, attributes, false).merge("Name" => name, "Type" => type)
       untype_cast_attributes(site, nil, internal_attribute_types, attributes, false)
     end
-    
+
   private
-    
+
     def list_for_lookup
       # I think List may be undefined for attributes defined at the site level, and that they need to be specified
       # when used at the list level.
@@ -112,11 +110,11 @@ module ActiveSP
         end
       end
     end
-  
+
     def original_attributes
       @original_attributes ||= type_cast_attributes(@site, nil, internal_attribute_types, @attributes_before_type_cast.merge("List" => list_for_lookup, "Type" => self.Type, "internal_type" => internal_type))
     end
-    
+
     def self.internal_attribute_types
       @@internal_attribute_types ||= {
         "AllowDeletion" => GhostField.new("AllowDeletion", "Bool", false, true),
@@ -198,13 +196,11 @@ module ActiveSP
         "XName" => GhostField.new("XName", "Text", false, true)
       }
     end
-    
+
     def internal_attribute_types
       self.class.internal_attribute_types
     end
-    
   end
-  
 end
 
 __END__

@@ -1,5 +1,5 @@
 # Copyright (c) 2010 XAOP bvba
-# 
+#
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
 # files (the "Software"), to deal in the Software without
@@ -8,40 +8,38 @@
 # copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following
 # conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# 
+#
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 # NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-# 
+#
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
 module ActiveSP
-  
   # @private
   module Util
-    
   private
-    
+
     def decode_field_name(name)
       name.gsub(/_x([0-9af]{4})_/i) { [$1.to_i(16)].pack("U") }
     end
-    
+
     def clean_attributes(attributes)
       attributes.inject({}) { |h, (k, v)| h[k] = v.to_s ; h }
     end
-    
+
     def clean_item_attributes(attributes)
       attributes.inject({}) { |h, (k, v)| h[k.sub(/\Aows_/, "")] = v.to_s ; h }
     end
-    
+
     def type_cast_attributes(site, list, fields, attributes)
       result = attributes.inject({}) do |h, (k, v)|
         k = decode_field_name(k)
@@ -80,13 +78,13 @@ module ActiveSP
           when "UserMulti"
             d = split_multi(v)
             v = (0...(d.length / 4)).map { |i| create_user_or_group_by_name(site, d[4 * i + 2]) }
-          
+
           when "Choice"
             # For some reason there is no encoding here
           when "MultiChoice"
             # SharePoint disallows ;# inside choices and starts with a ;#
             v = v.split(/;#/)[1..-1]
-          
+
           when "Lookup"
             d = split_multi(v)
             if field.List
@@ -110,7 +108,7 @@ module ActiveSP
             # TODO: lookup translated values in metadata store?
             v = (0...(d.length / 4)).map { |i| d[4 * i + 2] }
           when "ThreadIndex"
-            
+
           else
             # raise NotImplementedError, "don't know type #{field.internal_type.inspect} for #{k}=#{v.inspect}"
             # Note: can't print self if it needs the attributes to be loaded, so just display the class
@@ -129,14 +127,14 @@ module ActiveSP
       end
       result
     end
-    
+
     # TODO: check if this is still needed
     def create_user_or_group(site, entry)
       with_user_proxy(site) do
         create_user_or_group_no_proxy(site, entry)
       end
     end
-    
+
     def create_user_or_group_no_proxy(site, entry)
       if entry[/\\/]
         User.new(site.connection.root, entry)
@@ -144,13 +142,13 @@ module ActiveSP
         Group.new(site.connection.root, entry)
       end
     end
-    
+
     def create_user_or_group_by_name(site, name)
       with_user_proxy(site) do
         create_user_or_group_by_name_no_proxy(site, name)
       end
     end
-    
+
     def create_user_or_group_by_name_no_proxy(site, name)
       if /\A\d+\z/ === name
         create_user_or_group_by_id_no_proxy(site, name)
@@ -162,13 +160,13 @@ module ActiveSP
         end
       end
     end
-    
+
     def create_user_or_group_by_id(site, id)
       with_user_proxy(site) do
         create_user_or_group_by_id_no_proxy(site, id)
       end
     end
-    
+
     def create_user_or_group_by_id_no_proxy(site, id)
       if user = site.connection.users.find { |u| u.attribute("ID") === id }
         user
@@ -176,7 +174,7 @@ module ActiveSP
         group
       end
     end
-    
+
     def with_user_proxy(site, &blk)
       if site.connection.user_group_proxy
         ::ActiveSP::UserGroupProxy.new(blk)
@@ -184,7 +182,7 @@ module ActiveSP
         blk.call
       end
     end
-    
+
     def type_check_attribute(field, value, override_restrictions)
       case field.internal_type
       when "Text", "File", "URL", "Choice", "TaxonomyFieldType"
@@ -287,7 +285,7 @@ module ActiveSP
         raise "not yet #{field.Name}:#{field.internal_type}"
       end
     end
-    
+
     def type_check_attributes_for_creation(fields, attributes, override_restrictions)
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
@@ -302,7 +300,7 @@ module ActiveSP
         end
       end
     end
-    
+
     def untype_cast_attributes(site, list, fields, attributes, override_restrictions)
       attributes.inject({}) do |h, (k, v)|
         if field = fields[k]
@@ -352,7 +350,7 @@ module ActiveSP
         h
       end
     end
-    
+
     def construct_xml_for_copy_into_items(fields, attributes)
       attributes.map do |k, v|
         field = fields[k]
@@ -366,7 +364,7 @@ module ActiveSP
         )
       end.join("")
     end
-    
+
     def construct_xml_for_update_list_items(xml, list, fields, attributes)
       attributes.map do |k, v|
         field = fields[k]
@@ -379,21 +377,21 @@ module ActiveSP
         end
       end
     end
-    
+
     def encode_key(type, trail)
       "#{type}::#{trail.map { |t| t.to_s.gsub(/:/, ":-") }.join("::")}"
     end
-    
+
     def decode_key(key)
       type, *trail = key.split(/::/)
       [type, trail.map { |t| t.gsub(/:-/, ':') }]
     end
-    
+
     def split_multi(s)
       # Figure out the exact escaping rules that SharePoint uses
       s.scan(/((?:[^;]|;;#|;[^#;]|;;(?!#))+)(;#)?/).flatten
     end
-    
+
     def construct_item_from_id(list, id)
       query = Builder::XmlMarkup.new.Query do |xml|
         xml.Where do |xml|
@@ -405,7 +403,7 @@ module ActiveSP
       end
       list.items(:query => query).first
     end
-    
+
     def translate_internal_type(field)
       case field.internal_type
       when "Computed", "Text", "Guid", "ContentTypeId", "URL", "Choice", "MultiChoice", "File", "Note"
@@ -432,7 +430,7 @@ module ActiveSP
         "Text"
       end
     end
-    
+
     # Somewhat dirty
     def escape_xml(xml)
       Builder::XmlMarkup.new.s(xml).scan(/\A<s>(.*)<\/s>\z/)
@@ -445,7 +443,5 @@ module ActiveSP
         [name.text, value.text] if name && value
       end.compact)
     end
-    
   end
-  
 end

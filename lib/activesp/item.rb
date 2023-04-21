@@ -1,5 +1,5 @@
 # Copyright (c) 2010 XAOP bvba
-# 
+#
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
 # files (the "Software"), to deal in the Software without
@@ -8,33 +8,31 @@
 # copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following
 # conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# 
+#
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 # NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-# 
+#
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
 module ActiveSP
-  
   class Item < Base
-    
     include InSite
     extend Caching
     include Util
-    
+
     # Returns the list in which the item is located
     # @return [List]
     attr_reader :list
-    
+
     # @private
     def initialize(list, id, folder = :unset, uid = nil, url = nil, attributes_before_type_cast = nil)
       @list, @id = list, id
@@ -44,15 +42,15 @@ module ActiveSP
       @url = url if url
       @attributes_before_type_cast = attributes_before_type_cast if attributes_before_type_cast
     end
-    
+
     def ID
       @id
     end
-    
+
     def is_folder?
       false
     end
-    
+
     # Returns the folder, if any, that this item is located in.
     # @return [Folder, nil]
     def folder
@@ -71,24 +69,24 @@ module ActiveSP
       @list.items(:folder => :all, :query => query).first
     end
     cache :folder
-    
+
     # Returns the parent of this item.
     # @return [Folder, List]
     def parent
       folder || @list
     end
-    
+
     # @private
     def id
       uid
     end
-    
+
     # @private
     def uid
       attributes["UniqueID"]
     end
     cache :uid
-    
+
     # The URL of this item
     # @return [String]
     def url
@@ -96,18 +94,18 @@ module ActiveSP
       attributes["ServerUrl"]
     end
     cache :url
-    
+
     def absolute_url
       URL(@list.url).join(attributes["ServerUrl"]).to_s
     end
     cache :absolute_url
-    
+
     # See {Base#key}
     # @return [String]
     def key
       encode_key("I", [@list.key, @id])
     end
-    
+
     # Returns a list of the URLs of the attachments of this item. Note that for items in a document
     # library, this returns an empty list
     # @return [Array<String>]
@@ -120,12 +118,12 @@ module ActiveSP
       @list.raise_on_unknown_type
     end
     cache :attachment_urls, :dup => :always
-    
+
     # Yields each attachment as a ActiveSP::File object.
     def each_attachment
       attachment_urls.each { |url| yield ActiveSP::File.new(self, url, true) }
     end
-    
+
     def add_attachment(parameters = {})
       @list.when_list do
         parameters = parameters.dup
@@ -143,25 +141,25 @@ module ActiveSP
       @list.when_document_library { raise TypeError, "a document library does not support attachments" }
       @list.raise_on_unknown_type
     end
-    
+
     association :attachments do
       def create(parameters = {})
         @object.add_attachment(parameters)
       end
     end
-    
+
     def content
       @list.when_list { raise TypeError, "a list has attachments" }
       @list.when_document_library { return ActiveSP::File.new(self, url, false) }
       @list.raise_on_unknown_type
     end
-    
+
     def content=(data)
       @list.when_list { raise TypeError, "a list has attachments" }
       @list.when_document_library { @list.create_document(:overwrite => true, :content => data, "FileLeafRef" => original_attributes["FileLeafRef"]) }
       @list.raise_on_unknown_type
     end
-    
+
     # Returns a list of the content URLs for this item. For items in document libraries, this
     # returns the url, for other items this returns the attachments. These URLs can be used
     # to download all contents. See {Connection#fetch}
@@ -172,25 +170,25 @@ module ActiveSP
       @list.raise_on_unknown_type
     end
     cache :content_urls, :dup => :always
-    
+
     # Returns the content type of this item
     # @return [ContentType]
     def content_type
       ContentType.new(@site, @list, attributes["ContentTypeId"])
     end
     cache :content_type
-    
+
     # def versions
     #   call("Versions", "GetVersions", "fileName" => attributes["ServerUrl"])
     # end
-    
+
     # See {Base#save}
     # @return [self]
     def save
       update_attributes_internal(untype_cast_attributes(@site, nil, @list.fields_by_name, changed_attributes, true))
       self
     end
-    
+
     def check_out
       @list.when_list { raise TypeError, "cannot check out list items; they would disappear" }
       @list.raise_on_unknown_type
@@ -202,7 +200,7 @@ module ActiveSP
         raise "cannot check out this item"
       end
     end
-    
+
     def check_in(options = {})
       options = options.dup
       type = options.delete(:type) or raise ArgumentError, ":type parameter not specified"
@@ -225,7 +223,7 @@ module ActiveSP
         raise ArgumentError, "invalid checkin type #{type.inspect}, valid values are :minor, :major and :overwrite"
       end
     end
-    
+
     def cancel_checkout
       @list.when_list { raise TypeError, "cannot undo check-out for list items because you can't check them out" }
       @list.raise_on_unknown_type
@@ -237,21 +235,21 @@ module ActiveSP
         raise "cannot cancel check-out for this item"
       end
     end
-    
+
     def update_attributes(attributes)
       attributes.each do |k, v|
         set_attribute(k, v)
       end
       save
     end
-    
+
     def update_attributes!(attributes)
       attributes.each do |k, v|
         set_attribute!(k, v)
       end
       save
     end
-    
+
     def destroy
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => 1) do |xml|
         xml.Method("ID" => 1, "Cmd" => "Delete") do
@@ -274,21 +272,21 @@ module ActiveSP
       end
       self
     end
-    
+
     # @private
     def to_s
       "#<ActiveSP::Item url=#{url}>"
     end
-    
+
     # @private
     alias inspect to_s
-    
+
     def ==(object)
       ::ActiveSP::List === object && self.ID == object.ID
     end
-    
+
   private
-    
+
     def raw_attributes
       query_options = Builder::XmlMarkup.new.QueryOptions do |xml|
         xml.Folder
@@ -307,23 +305,23 @@ module ActiveSP
       raise ActiveSP::NotFound, "Not found"
     end
     cache :raw_attributes
-    
+
     def attributes_before_type_cast
       clean_item_attributes(raw_attributes)
     end
     cache :attributes_before_type_cast
-    
+
     def original_attributes
       type_cast_attributes(@site, @list, @list.fields_by_name, attributes_before_type_cast)
     end
     cache :original_attributes
-    
+
     def internal_attribute_types
       # list.fields_by_name
       content_type.fields_by_name
     end
     cache :internal_attribute_types
-    
+
     def update_attributes_internal(attributes)
       attributes = attributes.dup
       if file_leaf_ref = attributes.delete("FileLeafRef")
@@ -368,7 +366,7 @@ module ActiveSP
         end
       end
     end
-    
+
     def attribute_type_internal(name, override_restrictions)
       if override_restrictions
         @list.fields_by_name[name]
@@ -376,7 +374,5 @@ module ActiveSP
         attribute_type(name)
       end
     end
-    
   end
-  
 end
