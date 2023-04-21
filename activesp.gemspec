@@ -17,7 +17,6 @@ Gem::Specification.new do |s|
   s.add_dependency('curb')
   # s.rdoc_options << '--exclude' << 'ext' << '--main' << 'README'
   # s.extra_rdoc_files = ["README"]
-  s.has_rdoc = false
   s.require_paths << 'lib'
   # s.autorequire = 'mysql'
   s.required_ruby_version = '>= 1.8.1'
