@@ -239,14 +239,6 @@ Lint/UnusedMethodArgument:
     - 'lib/activesp/url.rb'
     - 'lib/activesp/util.rb'
 
-# Offense count: 7
-Lint/UriEscapeUnescape:
-  Exclude:
-    - 'lib/activesp/connection.rb'
-    - 'lib/activesp/item.rb'
-    - 'lib/activesp/list.rb'
-    - 'lib/activesp/site.rb'
-
 # Offense count: 1
 Lint/UselessAssignment:
   Exclude:
