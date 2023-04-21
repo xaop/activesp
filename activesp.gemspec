@@ -16,7 +16,6 @@ Gem::Specification.new do |s|
 
   s.add_dependency('savon', '~> 0.9.9')
   s.add_dependency('nokogiri')
-  s.add_dependency('curb')
 
   s.required_ruby_version = '>= 2.7.0'
   s.platform = Gem::Platform::RUBY

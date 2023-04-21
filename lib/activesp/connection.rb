@@ -32,8 +32,6 @@ end
 
 HTTPI.log = false
 
-HTTPI.adapter = :curb
-
 class Savon::SOAP::Fault
   def error_code
     Integer(((to_hash[:fault] || {})[:detail] || {})[:errorcode] || 0)
@@ -56,21 +54,6 @@ class HTTPI::Auth::Config
   # Returns whether to use GSSNEGOTIATE auth.
   def gssnegotiate?
     type == :gssnegotiate
-  end
-end
-
-class HTTPI::Adapter::Curb
-  def setup_client(request)
-    basic_setup request
-    setup_http_auth request if request.auth.http?
-    setup_ssl_auth request.auth.ssl if request.auth.ssl?
-    setup_ntlm_auth request if request.auth.ntlm?
-    setup_gssnegotiate_auth request if request.auth.gssnegotiate?
-  end
-
-  def setup_gssnegotiate_auth(request)
-    client.username, client.password = *request.auth.credentials
-    client.http_auth_types = request.auth.type
   end
 end
 
