@@ -42,29 +42,6 @@ class Savon::SOAP::Fault
   end
 end
 
-class HTTPI::Auth::Config
-  # Accessor for the GSSNEGOTIATE auth credentials.
-  def gssnegotiate(*args)
-    return @gssnegotiate if args.empty?
-
-    self.type = :gssnegotiate
-    @gssnegotiate = args.flatten.compact
-  end
-
-  # Returns whether to use GSSNEGOTIATE auth.
-  def gssnegotiate?
-    type == :gssnegotiate
-  end
-end
-
-# This is because setting the cookie causes problems on SP 2011
-class Savon::Client
-private
-
-  def set_cookie(headers)
-  end
-end
-
 module ActiveSP
   # This class is uses to configure the connection to a SharePoint repository. This is
   # the starting point for doing anything with SharePoint.
