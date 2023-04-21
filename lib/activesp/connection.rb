@@ -25,7 +25,6 @@
 
 require 'savon'
 require 'activesp/wasabi_authentication'
-require 'net/ntlm_http'
 
 Savon.configure do |config|
   config.log = false
