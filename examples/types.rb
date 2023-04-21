@@ -1,7 +1,6 @@
 require 'rubygems'
 $:.unshift("../lib") # Give priority to the local install
 require 'activesp'
-require 'pp'
 
 c = ActiveSP::Connection.new(YAML.load(File.read("config.yml")))
 
