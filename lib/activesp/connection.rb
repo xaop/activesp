@@ -37,7 +37,8 @@ HTTPI.log = false
 # over.
 # Note: in a near-future release this first moves to HTTPI and then gets removed
 # completely in Savon as they notice the problem as well.
-class Savon::Client
+# In version 1.2 of savon this was moved to HTTPI, but remained broken
+class HTTPI::Request
 private
 
   def set_cookie(headers)
