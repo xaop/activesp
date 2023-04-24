@@ -5,3 +5,6 @@ Style/StringLiterals:
 
 Layout/TrailingWhitespace:
   Enabled: true
+
+Lint/UriEscapeUnescape:
+  Enabled: true

@@ -39,13 +39,12 @@ HTTPI.log = false
 # completely in Savon as they notice the problem as well.
 # In version 1.2 of savon this was moved to HTTPI, but remained broken
 class HTTPI::Request
-private
-
-  def set_cookie(headers)
+  def set_cookies(headers)
   end
 end
 
-
+# Some extensions to Savon::SOAP::Fault
+# Will need to make sure we're properly updating this along the upgrade path
 class Savon::SOAP::Fault
   def error_code
     Integer(((to_hash[:fault] || {})[:detail] || {})[:errorcode] || 0)
