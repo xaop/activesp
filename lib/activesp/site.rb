@@ -362,8 +362,8 @@ module ActiveSP
     class Service
       def initialize(site, name)
         @site, @name = site, name
-        @client = Savon::Client.new(log: false) do |wsdl, http|
-          wsdl.document = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
+        wsdl = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
+        @client = Savon::Client.new(wsdl: wsdl, log: false) do |options|
           site.connection.authenticate(http, wsdl)
         end
       end
