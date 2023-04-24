@@ -32,6 +32,19 @@ end
 
 HTTPI.log = false
 
+# Savon sets cookies incorrectly, if a response doesn't contain set-cookie for a
+# particular cookie then it does not carry it over, it should in fact carry it
+# over.
+# Note: in a near-future release this first moves to HTTPI and then gets removed
+# completely in Savon as they notice the problem as well.
+class Savon::Client
+private
+
+  def set_cookie(headers)
+  end
+end
+
+
 class Savon::SOAP::Fault
   def error_code
     Integer(((to_hash[:fault] || {})[:detail] || {})[:errorcode] || 0)
