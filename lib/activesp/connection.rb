@@ -26,10 +26,6 @@
 require 'savon'
 require 'activesp/wasabi_authentication'
 
-Savon.configure do |config|
-  config.log = false
-end
-
 HTTPI.log = false
 
 # Savon sets cookies incorrectly, if a response doesn't contain set-cookie for a
@@ -43,9 +39,9 @@ class HTTPI::Request
   end
 end
 
-# Some extensions to Savon::SOAP::Fault
+# Some extensions to Savon::SOAPFault
 # Will need to make sure we're properly updating this along the upgrade path
-class Savon::SOAP::Fault
+class Savon::SOAPFault
   def error_code
     Integer(((to_hash[:fault] || {})[:detail] || {})[:errorcode] || 0)
   end
@@ -137,7 +133,7 @@ module ActiveSP
         r = yield false
         @sts_retry = 0
         r
-      rescue ::Savon::HTTP::Error => e
+      rescue ::Savon::HTTPError => e
         # no way to read the code of a Savon::HTTPError??
         if (auth_type == :sts) && (@sts_retry < nbr) && (e.to_hash[:code] == 403) # FORBIDDEN
 

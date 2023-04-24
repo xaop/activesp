@@ -356,7 +356,7 @@ module ActiveSP
       get_list_items("<ViewFields></ViewFields>", query_options, query, options) do |attributes|
         yield attributes
       end
-    rescue Savon::SOAP::Fault => e
+    rescue Savon::SOAPFault => e
       # This is where it gets ugly... Apparently there is a limit to the number of columns
       # you can retrieve with this operation. Joy!
       if /lookup column threshold/ === e.error_string
@@ -383,7 +383,7 @@ module ActiveSP
             end
             yield attrs
           end
-        rescue Savon::SOAP::Fault => e
+        rescue Savon::SOAPFault => e
           if /lookup column threshold/ === e.error_string
             split_factor += 1
             retry

@@ -94,7 +94,7 @@ module ActiveSP
     def site(name)
       result = call("Webs", "GetWeb", "webUrl" => ::File.join(@url, name))
       Site.new(connection, result.xpath("//sp:Web", NS).first["Url"].to_s, @depth + 1)
-    rescue Savon::SOAP::Fault
+    rescue Savon::SOAPFault
       nil
     end
 
@@ -220,7 +220,7 @@ module ActiveSP
     def accessible?
       data
       true
-    rescue Savon::HTTP::Error
+    rescue Savon::HTTPError
       false
     end
 
@@ -274,7 +274,7 @@ module ActiveSP
     def data
       # Looks like you can't call this as a non-admin. To investigate further
       call("SiteData", "GetWeb")
-    rescue Savon::HTTP::Error
+    rescue Savon::HTTPError
       # This can fail when you don't have access to this site
       call("Webs", "GetWeb", "webUrl" => ".")
     end
@@ -362,7 +362,7 @@ module ActiveSP
     class Service
       def initialize(site, name)
         @site, @name = site, name
-        @client = Savon::Client.new do |wsdl, http|
+        @client = Savon::Client.new(log: false) do |wsdl, http|
           wsdl.document = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
           site.connection.authenticate(http, wsdl)
         end
@@ -373,7 +373,7 @@ module ActiveSP
         if Hash === args[-1]
           body = args.pop
         end
-        @client.request(:wsdl, m.snakecase, *args) do |soap|
+        @client.call(:wsdl, m.snakecase, *args) do |soap|
           if body
             soap.body = body.map do |k, v|
               Builder::XmlMarkup.new.wsdl(k.to_sym) { |e| e << v.to_s }
@@ -381,7 +381,7 @@ module ActiveSP
           end
           yield soap if block_given?
         end
-      rescue Savon::SOAP::Fault => e
+      rescue Savon::SOAPFault => e
         if e.error_code == 0x80004005
           raise ActiveSP::AccessDenied, "access denied"
         elsif e.error_code == 0x80070005
