@@ -24,16 +24,14 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 require 'savon'
-require 'activesp/wasabi_authentication'
 
 HTTPI.log = false
 
 # Savon sets cookies incorrectly, if a response doesn't contain set-cookie for a
 # particular cookie then it does not carry it over, it should in fact carry it
 # over.
-# Note: in a near-future release this first moves to HTTPI and then gets removed
-# completely in Savon as they notice the problem as well.
-# In version 1.2 of savon this was moved to HTTPI, but remained broken
+# Note: In Savon 2.1 this was removed from HTTPI as well
+# Note: In version 1.2 of savon this was moved from Savon to HTTPI, but remained broken
 class HTTPI::Request
   def set_cookies(headers)
   end
@@ -146,22 +144,23 @@ module ActiveSP
       end
     end
 
-    def authenticate(http, wsdl = false)
+    def authentication_options
       if login
-        if wsdl
-          wsdl.authenticate(:method => auth_type, :usename => login, :password => password)
-        end
         case auth_type
         when :ntlm
-          http.auth.ntlm(login, password)
+          # Support starts in Savon 2.1, we should probably also allow for a domain
+          # Note that it might not be supported for every HTTPI adapter
+          { ntlm: [login, password] }
         when :basic
-          http.auth.basic(login, password)
+          { basic_auth: [login, password] }
         when :digest
-          http.auth.digest(login, password)
+          { digest_auth: [login, password] }
         when :gss_negotiate
-          http.auth.gssnegotiate(login, password)
+          raise "GSS Negotiation not supported in Savon 2"
+          # http.auth.gssnegotiate(login, password)
         when :sts
-          http.headers["Cookie"] = StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url))
+          { headers: { "Cookie" => StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url)) } }
+        # We're missing wsse auth related stuff that comes with Savon
         else
           raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
         end

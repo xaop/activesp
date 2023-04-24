@@ -360,12 +360,27 @@ module ActiveSP
 
     # @private
     class Service
+      class ServiceXmlBuilder
+        def initialize(body)
+          @body = body
+        end
+
+        def to_s
+          if @body
+            @body.map do |k, v|
+              Builder::XmlMarkup.new.wsdl(k.to_sym) { |e| e << v.to_s }
+            end.join
+          else
+            ""
+          end
+        end
+      end
+
       def initialize(site, name)
         @site, @name = site, name
-        wsdl = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
-        @client = Savon::Client.new(wsdl: wsdl, log: false) do |options|
-          site.connection.authenticate(http, wsdl)
-        end
+        wsdl_uri = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
+        authentication_options = site.connection.authentication_options
+        @client = Savon::Client.new(authentication_options.merge(wsdl: wsdl_uri, namespace_identifier: :wsdl, log: false))
       end
 
       def call(m, *args)
@@ -373,13 +388,9 @@ module ActiveSP
         if Hash === args[-1]
           body = args.pop
         end
-        @client.call(:wsdl, m.snakecase, *args) do |soap|
-          if body
-            soap.body = body.map do |k, v|
-              Builder::XmlMarkup.new.wsdl(k.to_sym) { |e| e << v.to_s }
-            end.join
-          end
-          yield soap if block_given?
+        @client.call(m.snakecase.to_sym, *args, message: ServiceXmlBuilder.new(body)) do |soap|
+          raise "Block not really supported here" if block_given?
+          #yield soap if block_given?
         end
       rescue Savon::SOAPFault => e
         if e.error_code == 0x80004005
