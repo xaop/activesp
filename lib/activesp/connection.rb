@@ -27,16 +27,6 @@ require 'savon'
 
 HTTPI.log = false
 
-# Savon sets cookies incorrectly, if a response doesn't contain set-cookie for a
-# particular cookie then it does not carry it over, it should in fact carry it
-# over.
-# Note: In Savon 2.1 this was removed from HTTPI as well
-# Note: In version 1.2 of savon this was moved from Savon to HTTPI, but remained broken
-class HTTPI::Request
-  def set_cookies(headers)
-  end
-end
-
 # Some extensions to Savon::SOAPFault
 # Will need to make sure we're properly updating this along the upgrade path
 class Savon::SOAPFault
