@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.files += %w(VERSION LICENSE README.rdoc Rakefile)
   s.files += Dir['lib/**/*.rb']
 
-  s.add_dependency('savon', '~> 2.8.0')
+  s.add_dependency('savon', '~> 2.10.0')
   s.add_dependency('nokogiri')
   s.add_dependency('curb')
 
