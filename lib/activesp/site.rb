@@ -388,7 +388,7 @@ module ActiveSP
         if Hash === args[-1]
           body = args.pop
         end
-        @client.call(m.snakecase.to_sym, *args, message: ServiceXmlBuilder.new(body)) do |soap|
+        @client.call(Savon::StringUtils.snakecase(m).to_sym, *args, message: ServiceXmlBuilder.new(body)) do |soap|
           raise "Block not really supported here" if block_given?
           #yield soap if block_given?
         end
