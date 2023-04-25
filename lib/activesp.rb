@@ -26,6 +26,7 @@
 require 'nokogiri'
 require 'time'
 require 'curl'
+require 'addressable/uri'
 
 module ActiveSP
 end

@@ -378,7 +378,7 @@ module ActiveSP
 
       def initialize(site, name)
         @site, @name = site, name
-        wsdl_uri = ::File.join(URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
+        wsdl_uri = ::File.join(Addressable::URI.escape(site.url), "_vti_bin", name + ".asmx?WSDL")
         authentication_options = site.connection.authentication_options
         @client = Savon::Client.new(authentication_options.merge(wsdl: wsdl_uri, namespace_identifier: :wsdl, log: false))
       end

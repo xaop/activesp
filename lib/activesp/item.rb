@@ -255,7 +255,7 @@ module ActiveSP
         xml.Method("ID" => 1, "Cmd" => "Delete") do
           xml.Field(self.ID, "Name" => "ID")
           @list.when_document_library do
-            file_ref = URI.unescape(original_attributes["EncodedAbsUrl"])
+            file_ref = Addressable::URI.unescape(original_attributes["EncodedAbsUrl"])
             xml.Field(file_ref, "Name" => "FileRef")
           end
         end
@@ -330,7 +330,7 @@ module ActiveSP
         if type != original_attributes["File Type"].to_s
           raise ArgumentError, "Cannot change file type of a document"
         end
-        file_ref = URI.unescape(original_attributes["EncodedAbsUrl"])
+        file_ref = Addressable::URI.unescape(original_attributes["EncodedAbsUrl"])
       end
       updates = Builder::XmlMarkup.new.Batch("OnError" => "Continue", "ListVersion" => @list.attribute("Version")) do |xml|
         xml.Method("ID" => 1, "Cmd" => "Update") do
@@ -341,7 +341,7 @@ module ActiveSP
             xml.Field(file_ref, "Name" => "FileRef")
           else
             @list.when_document_library do
-              xml.Field(URI.unescape(original_attributes["EncodedAbsUrl"]), "Name" => "FileRef")
+              xml.Field(Addressable::URI.unescape(original_attributes["EncodedAbsUrl"]), "Name" => "FileRef")
             end
           end
           xml.Field("1", "Name" => "FSObjType") if is_folder?

@@ -16,6 +16,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency('savon', '~> 2.14.0')
   s.add_dependency('nokogiri')
+  s.add_dependency('addressable')
   s.add_dependency('curb')
 
   s.required_ruby_version = '>= 2.7.0'

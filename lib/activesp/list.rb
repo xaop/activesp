@@ -546,7 +546,7 @@ module ActiveSP
         object = __item(file_name, :folder => folder_object)
         raise ActiveSP::AlreadyExists.new("document with file name #{file_name.inspect} already exists") { object } if object
       end
-      destination_urls = Builder::XmlMarkup.new.wsdl(:string, URI.escape(::File.join(folder || url, file_name)))
+      destination_urls = Builder::XmlMarkup.new.wsdl(:string, Addressable::URI.escape(::File.join(folder || url, file_name)))
       parameters = type_check_attributes_for_creation(fields_by_name, parameters, override_restrictions)
       attributes = untype_cast_attributes(@site, self, fields_by_name, parameters, override_restrictions)
       fields = construct_xml_for_copy_into_items(fields_by_name, attributes)
