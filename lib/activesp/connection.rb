@@ -172,7 +172,8 @@ module ActiveSP
       # request = Net::HTTP::Get.new(URL(url).full_path.gsub(/ /, "%20"))
       # it's quite old, there has been new sharepoint versions...
       # let's use URI.encode(url) now but keep in mind that there may be some special cases that would give multiple escape issues.
-      url = "#{protocol}://#{open_params.join(':')}#{URI.encode(url)}" unless /\Ahttp:\/\// === url
+      # 20 May 2023. Use Addressable::URI.escape instead of URI.encode. URI.encode is deprecated (was an alias for URI.escape).
+      url = "#{protocol}://#{open_params.join(':')}#{Addressable::URI.escape(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       with_sts_auth_retry do
         authenticate(request)
@@ -182,7 +183,7 @@ module ActiveSP
 
     def head(url)
       # url = "#{protocol}://#{open_params.join(':')}#{url.gsub(/ /, "%20")}" unless /\Ahttp:\/\// === url
-      url = "#{protocol}://#{open_params.join(':')}#{URI.encode(url)}" unless /\Ahttp:\/\// === url
+      url = "#{protocol}://#{open_params.join(':')}#{Addressable::URI.escape(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       with_sts_auth_retry do
         authenticate(request)
