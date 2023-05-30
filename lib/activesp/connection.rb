@@ -176,7 +176,6 @@ module ActiveSP
       url = "#{protocol}://#{open_params.join(':')}#{Addressable::URI.escape(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       with_sts_auth_retry do
-        authenticate(request)
         HTTPI.get(request)
       end
     end
@@ -186,7 +185,6 @@ module ActiveSP
       url = "#{protocol}://#{open_params.join(':')}#{Addressable::URI.escape(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       with_sts_auth_retry do
-        authenticate(request)
         HTTPI.head(request).headers
       end
     end
