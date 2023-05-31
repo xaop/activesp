@@ -157,6 +157,25 @@ module ActiveSP
       end
     end
 
+    def authenticate(http)
+      if login
+        case auth_type
+        when :ntlm
+          http.auth.ntlm(login, password)
+        when :basic
+          http.auth.basic(login, password)
+        when :digest
+          http.auth.digest(login, password)
+        when :gss_negotiate
+          http.auth.gssnegotiate(login, password)
+        when :sts
+          http.headers["Cookie"] = StsAuthenticator.getCookie(:login => login, :password => password, :url => URI.parse(@root_url))
+        else
+          raise ArgumentError, "Unknown authentication type #{auth_type.inspect}"
+        end
+      end
+    end
+
     # Fetches the content at the given URL using the login and password with which this
     # connection was constructed, if any. Always uses the GET method. Supports only
     # HTTP as protocol at the time of writing. This is useful for fetching content files
@@ -176,6 +195,7 @@ module ActiveSP
       url = "#{protocol}://#{open_params.join(':')}#{Addressable::URI.escape(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       with_sts_auth_retry do
+        authenticate(request)
         HTTPI.get(request)
       end
     end
@@ -185,6 +205,7 @@ module ActiveSP
       url = "#{protocol}://#{open_params.join(':')}#{Addressable::URI.escape(url)}" unless /\Ahttp:\/\// === url
       request = HTTPI::Request.new(url)
       with_sts_auth_retry do
+        authenticate(request)
         HTTPI.head(request).headers
       end
     end
